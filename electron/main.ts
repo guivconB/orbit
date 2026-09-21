@@ -1,10 +1,12 @@
-import { app, BrowserWindow, ipcMain, shell } from 'electron';
+import { app, BrowserWindow, ipcMain, shell, Tray, Menu, globalShortcut, Notification, nativeImage } from 'electron';
 import path from 'path';
 import { initDatabase, getDb } from './database';
 
-const isDev = !app.isPackaged;
+const isDev = process.argv.includes('--dev');
 
 let mainWindow: BrowserWindow | null = null;
+let tray: Tray | null = null;
+let isQuitting = false;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -24,21 +26,85 @@ function createWindow() {
   });
 
   if (isDev) {
-    // Load Vite dev server
     mainWindow.loadURL('http://localhost:5173');
-    mainWindow.webContents.openDevTools();
+    // mainWindow.webContents.openDevTools();
   } else {
-    // Load built React app
     mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
   }
 
-  // Handle opening links in default browser
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url);
     return { action: 'deny' };
   });
 
-  // Setup IPC Handlers
+  // Prevent closing, hide instead
+  mainWindow.on('close', (event) => {
+    if (!isQuitting) {
+      event.preventDefault();
+      mainWindow?.hide();
+    }
+  });
+
+  setupIpcHandlers();
+}
+
+function createTray() {
+  // Use the orbit jpg or a fallback
+  const iconPath = path.join(__dirname, isDev ? '../../public/orbit.jpg' : '../dist/orbit.jpg');
+  let icon = nativeImage.createFromPath(iconPath);
+  if (icon.isEmpty()) {
+    // fallback if icon not found
+    icon = nativeImage.createEmpty();
+  }
+  icon = icon.resize({ width: 16, height: 16 });
+
+  tray = new Tray(icon);
+  tray.setToolTip('Orbit Dashboard');
+
+  const contextMenu = Menu.buildFromTemplate([
+    { label: 'Abrir Painel', click: () => mainWindow?.show() },
+    { type: 'separator' },
+    { 
+      label: 'Sair', 
+      click: () => {
+        isQuitting = true;
+        app.quit();
+      }
+    }
+  ]);
+  
+  tray.setContextMenu(contextMenu);
+  tray.on('click', () => {
+    if (mainWindow?.isVisible()) {
+      mainWindow.hide();
+    } else {
+      mainWindow?.show();
+      mainWindow?.focus();
+    }
+  });
+}
+
+function setupIpcHandlers() {
+  // Notifications
+  ipcMain.on('show-notification', (event, { title, body }) => {
+    new Notification({ title, body }).show();
+  });
+
+  // UI
+  ipcMain.on('change-theme', (event, color: string) => {
+    if (mainWindow) {
+      mainWindow.setTitleBarOverlay({ color });
+    }
+  });
+
+  ipcMain.on('toggle-fullscreen', () => {
+    if (mainWindow) {
+      const isFullScreen = mainWindow.isFullScreen();
+      mainWindow.setFullScreen(!isFullScreen);
+    }
+  });
+
+  // Handle opening links in default browser
   ipcMain.handle('get-note', () => {
     const db = getDb();
     const row = db.prepare('SELECT content FROM notes ORDER BY id DESC LIMIT 1').get() as { content: string };
@@ -166,23 +232,40 @@ function createWindow() {
     }
     return true;
   });
-
-  ipcMain.on('change-theme', (event, color: string) => {
-    if (mainWindow) {
-      mainWindow.setTitleBarOverlay({ color });
-    }
-  });
 }
 
 app.whenReady().then(() => {
   initDatabase();
   createWindow();
+  createTray();
+
+  // Register Global Shortcut
+  globalShortcut.register('CommandOrControl+Space', () => {
+    if (mainWindow?.isVisible()) {
+      // If visible and focused, hide it. If visible but NOT focused, bring to front.
+      if (mainWindow.isFocused()) {
+        mainWindow.hide();
+      } else {
+        mainWindow.show();
+        mainWindow.focus();
+      }
+    } else {
+      mainWindow?.show();
+      mainWindow?.focus();
+    }
+  });
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow();
+    } else {
+      mainWindow?.show();
     }
   });
+});
+
+app.on('will-quit', () => {
+  globalShortcut.unregisterAll();
 });
 
 app.on('window-all-closed', () => {

@@ -12,6 +12,7 @@ export interface WidgetSettings {
 export interface AppSettings {
   theme: Theme;
   widgets: Record<string, WidgetSettings>;
+  widgetOrder: string[];
 }
 
 const defaultSettings: AppSettings = {
@@ -24,7 +25,8 @@ const defaultSettings: AppSettings = {
     pomodoro: { id: 'pomodoro', enabled: true, size: 'small' },
     weather: { id: 'weather', enabled: true, size: 'small' },
     habits: { id: 'habits', enabled: true, size: 'small' },
-  }
+  },
+  widgetOrder: ['scratchpad', 'links', 'files', 'kanban', 'pomodoro', 'weather', 'habits']
 };
 
 export function useSettings() {
@@ -33,8 +35,12 @@ export function useSettings() {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        // Merge with defaults to ensure new widgets are supported
-        return { ...defaultSettings, ...parsed, widgets: { ...defaultSettings.widgets, ...parsed.widgets } };
+        return { 
+          ...defaultSettings, 
+          ...parsed, 
+          widgets: { ...defaultSettings.widgets, ...parsed.widgets },
+          widgetOrder: parsed.widgetOrder || defaultSettings.widgetOrder
+        };
       } catch (e) {
         console.error('Failed to parse settings', e);
       }
@@ -92,5 +98,9 @@ export function useSettings() {
     }));
   };
 
-  return { settings, updateTheme, toggleWidget, resizeWidget };
+  const reorderWidgets = (newOrder: string[]) => {
+    setSettings(s => ({ ...s, widgetOrder: newOrder }));
+  };
+
+  return { settings, updateTheme, toggleWidget, resizeWidget, reorderWidgets };
 }

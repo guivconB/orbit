@@ -10,21 +10,42 @@ export function ClockWeatherWidget() {
     return () => clearInterval(timer);
   }, []);
 
+  const [isEditingCity, setIsEditingCity] = useState(false);
+  const [cityInput, setCityInput] = useState('');
+
   useEffect(() => {
     const fetchWeather = async () => {
       try {
-        // Obter localização por IP
-        const locRes = await fetch('http://ip-api.com/json/');
-        const locData = await locRes.json();
+        let lat, lon, cityName;
+        const savedCity = localStorage.getItem('orbit_city');
+        
+        if (savedCity) {
+          const searchRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(savedCity)}&count=1&language=pt`);
+          const searchData = await searchRes.json();
+          if (searchData.results && searchData.results.length > 0) {
+            lat = searchData.results[0].latitude;
+            lon = searchData.results[0].longitude;
+            cityName = searchData.results[0].name;
+          }
+        }
+
+        if (!lat || !lon) {
+          // Fallback to IP
+          const locRes = await fetch('http://ip-api.com/json/');
+          const locData = await locRes.json();
+          lat = locData.lat;
+          lon = locData.lon;
+          cityName = locData.city;
+        }
         
         // Obter clima
-        const weatherRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${locData.lat}&longitude=${locData.lon}&current_weather=true`);
+        const weatherRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`);
         const weatherData = await weatherRes.json();
 
         setWeather({
           temp: Math.round(weatherData.current_weather.temperature),
           condition: weatherData.current_weather.weathercode,
-          city: locData.city
+          city: cityName
         });
       } catch (err) {
         console.error('Failed to fetch weather', err);
@@ -34,7 +55,7 @@ export function ClockWeatherWidget() {
     fetchWeather();
     const weatherTimer = setInterval(fetchWeather, 30 * 60 * 1000); // Atualiza a cada 30 min
     return () => clearInterval(weatherTimer);
-  }, []);
+  }, [isEditingCity]); // Re-fetch when editing finishes
 
   const getWeatherIcon = (code: number) => {
     if (code === 0 || code === 1) return <Sun size={32} className="text-amber-400" />;
@@ -60,7 +81,39 @@ export function ClockWeatherWidget() {
         <div className="flex flex-col items-center bg-app rounded-2xl p-6 w-full max-w-[200px]">
           <div className="mb-3">{getWeatherIcon(weather.condition)}</div>
           <div className="text-4xl font-bold text-slate-100 mb-1">{weather.temp}°C</div>
-          <div className="text-slate-500 text-sm text-center">{weather.city}</div>
+          
+          {isEditingCity ? (
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              if (cityInput.trim()) {
+                localStorage.setItem('orbit_city', cityInput.trim());
+              } else {
+                localStorage.removeItem('orbit_city');
+              }
+              setIsEditingCity(false);
+            }} className="w-full mt-2">
+              <input
+                autoFocus
+                type="text"
+                placeholder="Sua cidade..."
+                className="w-full text-xs text-center p-1 rounded bg-slate-800 text-white outline-none border border-slate-600 focus:border-indigo-500"
+                value={cityInput}
+                onChange={e => setCityInput(e.target.value)}
+                onBlur={() => setIsEditingCity(false)}
+              />
+            </form>
+          ) : (
+            <div 
+              onClick={() => {
+                setCityInput(weather.city);
+                setIsEditingCity(true);
+              }}
+              className="text-slate-500 text-sm text-center cursor-pointer hover:text-slate-300 transition-colors"
+              title="Clique para alterar a cidade"
+            >
+              {weather.city}
+            </div>
+          )}
         </div>
       ) : (
         <div className="flex flex-col items-center bg-app rounded-2xl p-6 w-full max-w-[200px] animate-pulse">

@@ -34,12 +34,21 @@ Um painel de utilidades pessoal, leve e customizável desenvolvido com **Electro
    npm run dev
    ```
 
+## 🚀 Iniciar com o Windows (Auto-start)
+Para fazer o Orbit abrir sozinho em segundo plano quando você ligar o PC, abra o `PowerShell` e cole este comando:
+```powershell
+$VbsPath = "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Startup\Orbit.vbs"
+$VbsContent = 'Set WshShell = CreateObject("WScript.Shell")' + "`r`n" + 'WshShell.Run "cmd.exe /c cd /d C:\Users\guivc\Documents\antigravity\wise-franklin && npm start", 0, false'
+Set-Content -Path $VbsPath -Value $VbsContent
+```
+Isso criará um atalho invisível que inicia o painel silenciosamente (aparecendo apenas perto do relógio).
+
 ## 🏗️ Como Criar o Executável (.exe)
 Para gerar o arquivo final e instalar no seu computador:
 ```bash
-npm run build
+npm run dist
 ```
-O executável gerado estará localizado na pasta `dist` ou `release` (dependendo da sua configuração do `electron-builder`).
+O executável gerado estará localizado na pasta `release`. *Nota: Se você tiver problemas com permissões de anti-vírus no Windows ao gerar o `.exe`, basta usar o comando `npm start` para rodar a versão de produção leve sem precisar empacotar!*
 
 ---
 Feito com 💙 para produtividade máxima!
