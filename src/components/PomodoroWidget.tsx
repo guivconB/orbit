@@ -14,13 +14,18 @@ export function PomodoroWidget() {
       interval = setInterval(() => {
         setTimeLeft(time => time - 1);
       }, 1000);
-    } else if (timeLeft === 0) {
+    } else if (isActive && timeLeft === 0) {
       setIsActive(false);
-      // Play a sound or notification here ideally
       if (mode === 'work') {
+        if (window.electronAPI && window.electronAPI.showNotification) {
+          window.electronAPI.showNotification('Pomodoro Finalizado!', 'Hora de fazer uma pausa.');
+        }
         setMode('break');
         setTimeLeft(5 * 60);
       } else {
+        if (window.electronAPI && window.electronAPI.showNotification) {
+          window.electronAPI.showNotification('Pausa Finalizada!', 'Hora de voltar ao foco.');
+        }
         setMode('work');
         setTimeLeft(25 * 60);
       }
