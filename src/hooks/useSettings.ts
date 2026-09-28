@@ -7,16 +7,20 @@ export interface WidgetSettings {
   id: string;
   enabled: boolean;
   size: WidgetSize;
+  isPlugin?: boolean;
+  name?: string;
 }
 
 export interface AppSettings {
   theme: Theme;
+  geminiApiKey?: string;
   widgets: Record<string, WidgetSettings>;
   widgetOrder: string[];
 }
 
 const defaultSettings: AppSettings = {
   theme: 'slate',
+  geminiApiKey: '',
   widgets: {
     scratchpad: { id: 'scratchpad', enabled: true, size: 'small' },
     links: { id: 'links', enabled: true, size: 'small' },
@@ -25,8 +29,10 @@ const defaultSettings: AppSettings = {
     pomodoro: { id: 'pomodoro', enabled: true, size: 'small' },
     weather: { id: 'weather', enabled: true, size: 'small' },
     habits: { id: 'habits', enabled: true, size: 'small' },
+    ai: { id: 'ai', enabled: true, size: 'medium' },
+    music: { id: 'music', enabled: true, size: 'small' }
   },
-  widgetOrder: ['scratchpad', 'links', 'files', 'kanban', 'pomodoro', 'weather', 'habits']
+  widgetOrder: ['scratchpad', 'links', 'files', 'kanban', 'pomodoro', 'weather', 'habits', 'ai', 'music']
 };
 
 export function useSettings() {
@@ -102,5 +108,9 @@ export function useSettings() {
     setSettings(s => ({ ...s, widgetOrder: newOrder }));
   };
 
-  return { settings, updateTheme, toggleWidget, resizeWidget, reorderWidgets };
+  const updateSettings = (newSettings: Partial<AppSettings>) => {
+    setSettings(s => ({ ...s, ...newSettings }));
+  };
+
+  return { settings, updateTheme, toggleWidget, resizeWidget, reorderWidgets, updateSettings };
 }

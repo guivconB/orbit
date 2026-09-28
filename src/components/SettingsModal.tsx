@@ -25,6 +25,8 @@ const WIDGETS = [
   { id: 'pomodoro', name: 'Timer Pomodoro' },
   { id: 'weather', name: 'Relógio e Clima' },
   { id: 'habits', name: 'Hábitos' },
+  { id: 'ai', name: 'Assistente IA (Gemini)' },
+  { id: 'music', name: 'Player de Música' },
 ];
 
 export function SettingsModal({ isOpen, onClose, settingsData }: Props) {
@@ -81,15 +83,19 @@ export function SettingsModal({ isOpen, onClose, settingsData }: Props) {
             </h3>
             
             <div className="space-y-3">
-              {WIDGETS.map(w => {
-                const wSettings = settings.widgets[w.id];
-                if (!wSettings) return null;
+              {Object.values(settings.widgets).map(wSettings => {
+                // Para encontrar o nome original ou usar o nome do plugin
+                let wName = wSettings.name;
+                if (!wName) {
+                  const builtin = WIDGETS.find(w => w.id === wSettings.id);
+                  wName = builtin ? builtin.name : wSettings.id;
+                }
                 
                 return (
-                  <div key={w.id} className="flex items-center justify-between p-4 rounded-xl bg-widget/50 border border-border">
+                  <div key={wSettings.id} className="flex items-center justify-between p-4 rounded-xl bg-widget/50 border border-border">
                     <div className="flex items-center gap-3">
                       <button 
-                        onClick={() => toggleWidget(w.id, !wSettings.enabled)}
+                        onClick={() => toggleWidget(wSettings.id, !wSettings.enabled)}
                         className={clsx(
                           "relative w-11 h-6 rounded-full transition-colors focus:outline-none",
                           wSettings.enabled ? "bg-indigo-500" : "bg-slate-600"
@@ -100,8 +106,8 @@ export function SettingsModal({ isOpen, onClose, settingsData }: Props) {
                           wSettings.enabled ? "translate-x-5" : "translate-x-0"
                         )} />
                       </button>
-                      <span className={clsx("font-medium", wSettings.enabled ? "text-slate-200" : "text-slate-500 line-through")}>
-                        {w.name}
+                      <span className={clsx("font-medium capitalize", wSettings.enabled ? "text-slate-200" : "text-slate-500 line-through")}>
+                        {wName} {wSettings.isPlugin && <span className="text-xs bg-indigo-500/20 text-indigo-400 px-2 py-0.5 rounded ml-2">Plugin</span>}
                       </span>
                     </div>
 
@@ -110,7 +116,7 @@ export function SettingsModal({ isOpen, onClose, settingsData }: Props) {
                         {(['small', 'medium', 'large'] as WidgetSize[]).map(size => (
                           <button
                             key={size}
-                            onClick={() => resizeWidget(w.id, size)}
+                            onClick={() => resizeWidget(wSettings.id, size)}
                             className={clsx(
                               "px-3 py-1 text-xs font-medium rounded-md capitalize transition-colors",
                               wSettings.size === size 

@@ -25,7 +25,9 @@
       "output": "release"
     },
     "win": {
-      "target": ["nsis"]
+      "target": [
+        "nsis"
+      ]
     },
     "files": [
       "dist/**/*",
@@ -37,8 +39,10 @@
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
+    "@google/generative-ai": "^0.24.1",
     "better-sqlite3": "^13.0.3",
     "clsx": "^2.1.1",
+    "firebase": "^12.19.0",
     "framer-motion": "^13.2.0",
     "lucide-react": "^1.44.0",
     "react": "^19.2.8",

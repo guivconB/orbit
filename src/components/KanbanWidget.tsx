@@ -26,6 +26,18 @@ export function KanbanWidget() {
     loadTasks();
   }, []);
 
+  // Debounced Cloud Sync for Tasks
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (tasks.length > 0) {
+        import('../firebase/sync').then(module => {
+          module.syncTasksToCloud(tasks);
+        }).catch(err => console.log('Firebase não configurado ou erro:', err));
+      }
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [tasks]);
+
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim()) return;

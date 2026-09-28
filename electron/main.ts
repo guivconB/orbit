@@ -232,6 +232,36 @@ function setupIpcHandlers() {
     }
     return true;
   });
+
+  // Plugins IPC Handler
+  ipcMain.handle('get-plugins', () => {
+    const fs = require('fs');
+    const pluginsDir = path.join(app.getPath('documents'), 'Orbit-Plugins');
+    
+    // Criar a pasta se não existir
+    if (!fs.existsSync(pluginsDir)) {
+      fs.mkdirSync(pluginsDir, { recursive: true });
+    }
+
+    const plugins: { id: string; name: string; url: string; content?: string }[] = [];
+    const dirs = fs.readdirSync(pluginsDir, { withFileTypes: true });
+
+    for (const dir of dirs) {
+      if (dir.isDirectory()) {
+        const indexPath = path.join(pluginsDir, dir.name, 'index.html');
+        if (fs.existsSync(indexPath)) {
+          const content = fs.readFileSync(indexPath, 'utf-8');
+          plugins.push({
+            id: `plugin-${dir.name}`,
+            name: dir.name,
+            url: `file:///${indexPath.replace(/\\/g, '/')}`,
+            content: content
+          });
+        }
+      }
+    }
+    return plugins;
+  });
 }
 
 app.whenReady().then(() => {
