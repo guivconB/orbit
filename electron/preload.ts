@@ -31,5 +31,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // UI
   changeTheme: (color: string) => ipcRenderer.send('change-theme', color),
   showNotification: (title: string, body: string) => ipcRenderer.send('show-notification', { title, body }),
-  toggleFullscreen: () => ipcRenderer.send('toggle-fullscreen')
+  toggleFullscreen: () => ipcRenderer.send('toggle-fullscreen'),
+
+  // Plugins
+  getPlugins: () => ipcRenderer.invoke('get-plugins')
 });

@@ -26,3 +26,7 @@ dist-ssr
 dist-electron
 release
 database.sqlite
+
+src/firebase/config.ts
+.agents/
+skills-lock.json

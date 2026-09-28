@@ -9,6 +9,8 @@ import { HabitsWidget } from './components/HabitsWidget';
 import { SettingsModal } from './components/SettingsModal';
 import { SortableWidget } from './components/SortableWidget';
 import { useSettings } from './hooks/useSettings';
+import { MusicWidget } from './components/MusicWidget';
+import { AIAssistantWidget } from './components/AIAssistantWidget';
 import clsx from 'clsx';
 import {
   DndContext,
@@ -49,15 +51,17 @@ declare global {
       changeTheme?: (color: string) => void;
       showNotification?: (title: string, body: string) => void;
       toggleFullscreen?: () => void;
+      getPlugins?: () => Promise<{ id: string; name: string; url: string; content?: string }[]>;
     };
   }
 }
 
 function App() {
   const [note, setNote] = useState('');
+  const [plugins, setPlugins] = useState<{ id: string; name: string; url: string; content?: string }[]>([]);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const settingsData = useSettings();
-  const { settings, reorderWidgets } = settingsData;
+  const { settings, reorderWidgets, updateSettings } = settingsData;
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -73,15 +77,51 @@ function App() {
   useEffect(() => {
     if (window.electronAPI) {
       window.electronAPI.getNote().then(setNote);
+      if (window.electronAPI.getPlugins) {
+        window.electronAPI.getPlugins().then(loadedPlugins => {
+          setPlugins(loadedPlugins);
+          
+          // Registrar os plugins novos nas configurações se não existirem
+          const newWidgets = { ...settings.widgets };
+          let newOrder = [...settings.widgetOrder];
+          let updated = false;
+
+          loadedPlugins.forEach(p => {
+            if (!newWidgets[p.id]) {
+              newWidgets[p.id] = { id: p.id, enabled: true, size: 'small', isPlugin: true, name: p.name };
+              newOrder.push(p.id);
+              updated = true;
+            }
+          });
+
+          if (updated) {
+            updateSettings({ widgets: newWidgets, widgetOrder: newOrder });
+          }
+        });
+      }
     }
   }, []);
 
   const handleNoteChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setNote(e.target.value);
+    const newContent = e.target.value;
+    setNote(newContent);
     if (window.electronAPI) {
-      window.electronAPI.saveNote(e.target.value);
+      window.electronAPI.saveNote(newContent);
     }
   };
+
+  // Debounced Cloud Sync for Notes
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (note) {
+        import('./firebase/sync').then(module => {
+          module.syncNoteToCloud(note);
+        }).catch(err => console.log('Firebase não configurado ou erro:', err));
+      }
+    }, 2000); // Sincroniza 2 segundos após parar de digitar
+    
+    return () => clearTimeout(timer);
+  }, [note]);
 
   const getGridClasses = (id: string) => {
     const size = settings.widgets[id]?.size || 'small';
@@ -120,8 +160,22 @@ function App() {
     kanban: <KanbanWidget />,
     pomodoro: <PomodoroWidget />,
     weather: <ClockWeatherWidget />,
-    habits: <HabitsWidget />
+    habits: <HabitsWidget />,
+    ai: <AIAssistantWidget />,
+    music: <MusicWidget />
   };
+
+  // Injetar plugins no WIDGET_MAP
+  plugins.forEach(p => {
+    WIDGET_MAP[p.id] = (
+      <div className="bg-widget rounded-xl shadow-lg border border-border flex flex-col h-full min-h-[400px] overflow-hidden">
+        <div className="flex items-center p-3 border-b border-border bg-widget/50">
+          <h2 className="text-sm font-semibold text-slate-200 capitalize">{p.name} (Plugin)</h2>
+        </div>
+        <iframe srcDoc={p.content} className="flex-1 w-full h-full" frameBorder="0" allow="fullscreen" sandbox="allow-scripts allow-same-origin allow-popups" />
+      </div>
+    );
+  });
 
   return (
     <div className="h-screen flex flex-col font-sans select-none bg-app transition-colors duration-300">
