@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Maximize2, Expand } from 'lucide-react';
+import { Settings, Maximize2, Expand, Heart } from 'lucide-react';
 import { LinksWidget } from './components/LinksWidget';
 import { FilesWidget } from './components/FilesWidget';
 import { KanbanWidget } from './components/KanbanWidget';
@@ -7,6 +7,7 @@ import { PomodoroWidget } from './components/PomodoroWidget';
 import { ClockWeatherWidget } from './components/ClockWeatherWidget';
 import { HabitsWidget } from './components/HabitsWidget';
 import { SettingsModal } from './components/SettingsModal';
+import { SupportModal } from './components/SupportModal';
 import { SortableWidget } from './components/SortableWidget';
 import { useSettings } from './hooks/useSettings';
 import { MusicWidget } from './components/MusicWidget';
@@ -60,6 +61,7 @@ function App() {
   const [note, setNote] = useState('');
   const [plugins, setPlugins] = useState<{ id: string; name: string; url: string; content?: string }[]>([]);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isSupportOpen, setIsSupportOpen] = useState(false);
   const settingsData = useSettings();
   const { settings, reorderWidgets, updateSettings } = settingsData;
 
@@ -183,6 +185,15 @@ function App() {
       <div className="h-10 drag-region flex items-center pl-4 pr-[140px] justify-between border-b border-border bg-widget/30" style={{ WebkitAppRegion: 'drag' } as any}>
         <div className="text-sm font-semibold opacity-70">Orbit Dashboard</div>
         <div className="no-drag-region flex items-center gap-1" style={{ WebkitAppRegion: 'no-drag' } as any}>
+          {settings.showSupportButton && (
+            <button 
+              onClick={() => setIsSupportOpen(true)}
+              className="p-1.5 rounded hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 transition-colors"
+              title="Apoie o Orbit"
+            >
+              <Heart size={15} className="fill-rose-400/30" />
+            </button>
+          )}
           <button 
             onClick={() => {
               if (window.electronAPI && window.electronAPI.toggleFullscreen) {
@@ -233,6 +244,11 @@ function App() {
         isOpen={isSettingsOpen} 
         onClose={() => setIsSettingsOpen(false)} 
         settingsData={settingsData} 
+      />
+
+      <SupportModal 
+        isOpen={isSupportOpen} 
+        onClose={() => setIsSupportOpen(false)} 
       />
     </div>
   );

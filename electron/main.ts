@@ -8,10 +8,13 @@ let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let isQuitting = false;
 
+const isHidden = process.argv.includes('--hidden');
+
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
+    show: !isHidden,
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       nodeIntegration: false,
@@ -265,6 +268,13 @@ function setupIpcHandlers() {
 }
 
 app.whenReady().then(() => {
+  if (app.isPackaged) {
+    app.setLoginItemSettings({
+      openAtLogin: true,
+      args: ['--hidden']
+    });
+  }
+
   initDatabase();
   createWindow();
   createTray();
