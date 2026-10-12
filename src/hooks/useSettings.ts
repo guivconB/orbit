@@ -16,11 +16,13 @@ export interface AppSettings {
   geminiApiKey?: string;
   widgets: Record<string, WidgetSettings>;
   widgetOrder: string[];
+  showSupportButton?: boolean;
 }
 
 const defaultSettings: AppSettings = {
   theme: 'slate',
   geminiApiKey: '',
+  showSupportButton: false,
   widgets: {
     scratchpad: { id: 'scratchpad', enabled: true, size: 'small' },
     links: { id: 'links', enabled: true, size: 'small' },
@@ -41,11 +43,15 @@ export function useSettings() {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
+        const parsedOrder = parsed.widgetOrder || defaultSettings.widgetOrder;
+        const missingWidgets = defaultSettings.widgetOrder.filter(id => !parsedOrder.includes(id));
+        const mergedOrder = [...parsedOrder, ...missingWidgets];
+        
         return { 
           ...defaultSettings, 
           ...parsed, 
           widgets: { ...defaultSettings.widgets, ...parsed.widgets },
-          widgetOrder: parsed.widgetOrder || defaultSettings.widgetOrder
+          widgetOrder: mergedOrder
         };
       } catch (e) {
         console.error('Failed to parse settings', e);

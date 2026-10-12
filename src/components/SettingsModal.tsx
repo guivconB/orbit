@@ -1,7 +1,9 @@
-import React from 'react';
-import { X, Check, Monitor, LayoutGrid, Palette, ToggleLeft } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, Check, Monitor, LayoutGrid, Palette, History, Heart, HelpCircle, ChevronRight } from 'lucide-react';
 import { useSettings } from '../hooks/useSettings';
 import type { Theme, WidgetSize } from '../hooks/useSettings';
+import { ChangelogModal } from './ChangelogModal';
+import { OnboardingModal } from './OnboardingModal';
 import clsx from 'clsx';
 
 interface Props {
@@ -30,8 +32,11 @@ const WIDGETS = [
 ];
 
 export function SettingsModal({ isOpen, onClose, settingsData }: Props) {
+  const [isChangelogOpen, setIsChangelogOpen] = useState(false);
+  const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
+
   if (!isOpen) return null;
-  const { settings, updateTheme, toggleWidget, resizeWidget } = settingsData;
+  const { settings, updateTheme, toggleWidget, resizeWidget, updateSettings } = settingsData;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
@@ -135,8 +140,97 @@ export function SettingsModal({ isOpen, onClose, settingsData }: Props) {
             </div>
           </section>
 
+          <hr className="border-border" />
+
+          {/* Recursos de Produção & Apoio */}
+          <section>
+            <h3 className="text-sm uppercase tracking-wider text-slate-400 font-semibold mb-4 flex items-center gap-2">
+              <Heart size={16} className="text-rose-400" /> Recursos de Lançamento & Apoio
+            </h3>
+            
+            <div className="space-y-3">
+              {/* Toggle Apoia.se */}
+              <div className="flex items-center justify-between p-4 rounded-xl bg-widget/50 border border-border">
+                <div className="flex items-center gap-3">
+                  <button 
+                    onClick={() => updateSettings({ showSupportButton: !settings.showSupportButton })}
+                    className={clsx(
+                      "relative w-11 h-6 rounded-full transition-colors focus:outline-none",
+                      settings.showSupportButton ? "bg-rose-500" : "bg-slate-600"
+                    )}
+                  >
+                    <span className={clsx(
+                      "absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform",
+                      settings.showSupportButton ? "translate-x-5" : "translate-x-0"
+                    )} />
+                  </button>
+                  <div>
+                    <span className="font-medium text-slate-200 block text-sm">
+                      Botão de Apoio no Cabeçalho
+                    </span>
+                    <span className="text-xs text-slate-400 block">
+                      Exibe atalho para doação/apoio comunitário (Apoia.se)
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Botão Onboarding */}
+              <button
+                onClick={() => setIsOnboardingOpen(true)}
+                className="w-full flex items-center justify-between p-3.5 rounded-xl bg-widget/30 hover:bg-widget border border-border/80 transition-colors text-left"
+              >
+                <div className="flex items-center gap-3">
+                  <HelpCircle size={18} className="text-indigo-400" />
+                  <div>
+                    <span className="font-medium text-slate-200 text-sm block">Guia de Boas-Vindas</span>
+                    <span className="text-xs text-slate-400 block">Rever tutorial de introdução do painel</span>
+                  </div>
+                </div>
+                <ChevronRight size={16} className="text-slate-400" />
+              </button>
+            </div>
+          </section>
+
+          <hr className="border-border" />
+
+          {/* Histórico de Versões & Sobre */}
+          <section className="pt-1">
+            <button
+              onClick={() => setIsChangelogOpen(true)}
+              className="w-full flex items-center justify-between p-3.5 rounded-xl bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 hover:from-indigo-500/20 hover:to-pink-500/20 border border-indigo-500/20 transition-all text-left"
+            >
+              <div className="flex items-center gap-3">
+                <History size={18} className="text-indigo-400" />
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-slate-100 text-sm">Histórico de Versões</span>
+                    <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-indigo-500/30 text-indigo-300 border border-indigo-500/40">
+                      v4.0.0
+                    </span>
+                  </div>
+                  <span className="text-xs text-slate-400 block mt-0.5">
+                    Veja todas as novidades e melhorias que chegaram em cada versão
+                  </span>
+                </div>
+              </div>
+              <ChevronRight size={16} className="text-slate-400" />
+            </button>
+          </section>
+
         </div>
       </div>
+
+      {/* Modais Aninhados */}
+      <ChangelogModal 
+        isOpen={isChangelogOpen} 
+        onClose={() => setIsChangelogOpen(false)} 
+      />
+
+      <OnboardingModal 
+        isOpen={isOnboardingOpen} 
+        onClose={() => setIsOnboardingOpen(false)} 
+      />
     </div>
   );
 }
