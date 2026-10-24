@@ -33,16 +33,18 @@ export function SortableWidget({ id, gridClasses, children }: SortableWidgetProp
       className={clsx(
         "relative group/widget transition-all h-full max-h-full flex flex-col",
         gridClasses,
-        isDragging && "opacity-50 ring-2 ring-indigo-500 rounded-xl"
+        isDragging && "opacity-60 ring-2 ring-accent rounded-2xl scale-[1.01] shadow-2xl"
       )}
     >
       {/* Drag handle */}
       <div 
         {...attributes}
         {...listeners}
-        className="absolute top-2 left-1/2 -translate-x-1/2 z-20 p-1 opacity-0 group-hover/widget:opacity-100 transition-opacity cursor-grab active:cursor-grabbing bg-widget rounded-full shadow-md border border-border"
+        className="absolute top-2.5 left-1/2 -translate-x-1/2 z-20 px-2 py-0.5 opacity-0 group-hover/widget:opacity-100 transition-all cursor-grab active:cursor-grabbing bg-widget/90 backdrop-blur-md rounded-full shadow-lg border border-border flex items-center justify-center hover:border-accent/40"
+        title="Arrastar widget"
+        aria-label="Arrastar widget"
       >
-        <GripHorizontal size={14} className="text-slate-400" />
+        <GripHorizontal size={14} className="text-slate-400 hover:text-slate-200 transition-colors" />
       </div>
       
       {children}

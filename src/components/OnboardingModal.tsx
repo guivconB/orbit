@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { X, ArrowRight, LayoutGrid, Cpu, Bot, Cloud, Check } from 'lucide-react';
 
 interface Props {
@@ -20,7 +20,7 @@ const STEPS = [
   {
     icon: Bot,
     title: 'Assistente Inteligente & Foco',
-    description: 'Converse com o Gemini Pro embutido e escute rádios Lo-Fi ou Spotify enquanto usa o Pomodoro com notificações nativas do Windows.'
+    description: 'Converse com o Gemini embutido e escute rádios Lo-Fi ou Spotify enquanto usa o Pomodoro com notificações nativas do Windows.'
   },
   {
     icon: Cloud,
@@ -46,20 +46,21 @@ export function OnboardingModal({ isOpen, onClose }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4 animate-fadeIn">
-      <div className="bg-app w-full max-w-lg rounded-2xl shadow-2xl border border-border overflow-hidden flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-xl p-4 animate-fadeIn">
+      <div className="bg-app/95 w-full max-w-lg rounded-3xl shadow-2xl border border-white/10 overflow-hidden flex flex-col">
         
         {/* Header */}
-        <div className="p-4 border-b border-border flex items-center justify-between bg-widget/50">
+        <div className="p-4 border-b border-white/[0.06] flex items-center justify-between bg-black/25">
           <div className="flex items-center gap-2">
-            <span className="text-xs uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">
+            <span className="text-[10px] uppercase font-mono font-bold tracking-wider px-2 py-0.5 rounded-full bg-accent/20 text-accent border border-accent/30">
               Guia Orbit
             </span>
             <span className="text-xs text-slate-400">Passo {currentStep + 1} de {STEPS.length}</span>
           </div>
           <button 
             onClick={onClose} 
-            className="p-1.5 hover:bg-widget-hover rounded-full text-slate-400 hover:text-white transition-colors"
+            className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/10 text-slate-400 hover:text-white transition-colors cursor-pointer"
+            aria-label="Fechar guia de introdução"
           >
             <X size={18} />
           </button>
@@ -67,12 +68,12 @@ export function OnboardingModal({ isOpen, onClose }: Props) {
 
         {/* Step Content */}
         <div className="p-8 text-center flex flex-col items-center">
-          <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center mb-5 shadow-inner">
+          <div className="w-16 h-16 rounded-2xl bg-accent/15 border border-accent/25 text-accent flex items-center justify-center mb-5 shadow-inner">
             <Icon size={32} />
           </div>
 
-          <h3 className="text-xl font-bold text-slate-100">{step.title}</h3>
-          <p className="text-sm text-slate-300 mt-3 leading-relaxed max-w-sm">
+          <h3 className="text-lg font-bold text-slate-100 tracking-tight">{step.title}</h3>
+          <p className="text-xs text-slate-300 mt-2.5 leading-relaxed max-w-sm">
             {step.description}
           </p>
 
@@ -81,24 +82,24 @@ export function OnboardingModal({ isOpen, onClose }: Props) {
             {STEPS.map((_, i) => (
               <span 
                 key={i} 
-                className={`h-2 rounded-full transition-all ${i === currentStep ? 'w-6 bg-indigo-500' : 'w-2 bg-slate-700'}`}
+                className={`h-1.5 rounded-full transition-all ${i === currentStep ? 'w-6 bg-accent' : 'w-2 bg-white/15'}`}
               />
             ))}
           </div>
         </div>
 
         {/* Footer Actions */}
-        <div className="p-4 bg-widget/30 border-t border-border flex items-center justify-between">
+        <div className="p-4 bg-black/30 border-t border-white/[0.06] flex items-center justify-between">
           <button
             onClick={onClose}
-            className="text-xs text-slate-400 hover:text-slate-200 transition-colors font-medium px-2 py-1"
+            className="text-xs text-slate-400 hover:text-slate-200 transition-colors font-medium px-2 py-1 cursor-pointer"
           >
             Pular Guia
           </button>
 
           <button
             onClick={handleNext}
-            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-4 py-2 rounded-xl transition-all shadow-md"
+            className="flex items-center gap-2 bg-accent hover:opacity-90 active:scale-95 text-white text-xs font-semibold px-4 py-2 rounded-xl transition-all shadow-sm shadow-accent/25 cursor-pointer"
           >
             <span>{currentStep === STEPS.length - 1 ? 'Começar a Usar' : 'Próximo'}</span>
             {currentStep === STEPS.length - 1 ? <Check size={14} /> : <ArrowRight size={14} />}

@@ -1,48 +1,107 @@
 @import "tailwindcss";
 
 @theme {
+  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+
   --color-app: var(--theme-app);
   --color-widget: var(--theme-widget);
   --color-widget-hover: var(--theme-widget-hover);
   --color-border: var(--theme-border);
+  --color-border-highlight: var(--theme-border-highlight);
+  --color-accent: var(--theme-accent);
+  --color-accent-hover: var(--theme-accent-hover);
+  --color-accent-glow: var(--theme-accent-glow);
+  --color-accent-muted: var(--theme-accent-muted);
 }
 
+/* ==========================================================================
+   THEME TOKENS (Consistência dinâmica em todos os 4 temas)
+   ========================================================================== */
 :root, :root[data-theme="slate"] {
-  --theme-app: var(--color-slate-900);
-  --theme-widget: var(--color-slate-800);
-  --theme-widget-hover: var(--color-slate-700);
-  --theme-border: var(--color-slate-700);
+  --theme-app: #0a0e17;
+  --theme-widget: rgba(17, 24, 39, 0.72);
+  --theme-widget-hover: rgba(31, 41, 55, 0.85);
+  --theme-border: rgba(255, 255, 255, 0.08);
+  --theme-border-highlight: rgba(255, 255, 255, 0.16);
+  --theme-accent: #6366f1;
+  --theme-accent-hover: #4f46e5;
+  --theme-accent-glow: rgba(99, 102, 241, 0.25);
+  --theme-accent-muted: rgba(99, 102, 241, 0.15);
 }
 
 :root[data-theme="ocean"] {
-  --theme-app: #020617; /* slate-950 */
-  --theme-widget: #1e3a8a; /* blue-900 */
-  --theme-widget-hover: #1e40af; /* blue-800 */
-  --theme-border: #1e40af; /* blue-800 */
+  --theme-app: #030816;
+  --theme-widget: rgba(11, 23, 44, 0.72);
+  --theme-widget-hover: rgba(15, 34, 68, 0.85);
+  --theme-border: rgba(56, 189, 248, 0.12);
+  --theme-border-highlight: rgba(56, 189, 248, 0.25);
+  --theme-accent: #0ea5e9;
+  --theme-accent-hover: #0284c7;
+  --theme-accent-glow: rgba(14, 165, 233, 0.25);
+  --theme-accent-muted: rgba(14, 165, 233, 0.15);
 }
 
 :root[data-theme="emerald"] {
-  --theme-app: #020617; /* slate-950 */
-  --theme-widget: #064e3b; /* emerald-900 */
-  --theme-widget-hover: #065f46; /* emerald-800 */
-  --theme-border: #065f46; /* emerald-800 */
+  --theme-app: #02140e;
+  --theme-widget: rgba(6, 36, 26, 0.72);
+  --theme-widget-hover: rgba(9, 53, 38, 0.85);
+  --theme-border: rgba(52, 211, 153, 0.12);
+  --theme-border-highlight: rgba(52, 211, 153, 0.25);
+  --theme-accent: #10b981;
+  --theme-accent-hover: #059669;
+  --theme-accent-glow: rgba(16, 185, 129, 0.25);
+  --theme-accent-muted: rgba(16, 185, 129, 0.15);
 }
 
 :root[data-theme="rose"] {
-  --theme-app: #020617; /* slate-950 */
-  --theme-widget: #881337; /* rose-900 */
-  --theme-widget-hover: #9f1239; /* rose-800 */
-  --theme-border: #9f1239; /* rose-800 */
+  --theme-app: #12050c;
+  --theme-widget: rgba(43, 11, 28, 0.72);
+  --theme-widget-hover: rgba(64, 15, 41, 0.85);
+  --theme-border: rgba(251, 113, 133, 0.12);
+  --theme-border-highlight: rgba(251, 113, 133, 0.25);
+  --theme-accent: #f43f5e;
+  --theme-accent-hover: #e11d48;
+  --theme-accent-glow: rgba(244, 63, 94, 0.25);
+  --theme-accent-muted: rgba(244, 63, 94, 0.15);
 }
 
+/* ==========================================================================
+   GLOBAL STYLES & ELEVAÇÃO MULTICAMADAS
+   ========================================================================== */
 body {
   background-color: var(--theme-app);
-  color: var(--color-slate-100);
+  color: #f1f5f9;
   overflow: hidden;
+  letter-spacing: -0.012em;
 }
 
+/* Efeito Vidro Escuro & Elevação Suave */
+.orbit-card {
+  background-color: var(--theme-widget);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--theme-border);
+  box-shadow: 
+    0 4px 6px -1px rgba(0, 0, 0, 0.25),
+    0 2px 4px -2px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.08);
+  border-radius: 1rem;
+  transition: border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.orbit-card:hover {
+  border-color: var(--theme-border-highlight);
+  box-shadow: 
+    0 10px 25px -5px rgba(0, 0, 0, 0.35),
+    0 8px 10px -6px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.14);
+}
+
+/* Scrollbar Minimalista & Discreta */
 .custom-scrollbar::-webkit-scrollbar {
   width: 6px;
+  height: 6px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
@@ -50,10 +109,10 @@ body {
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #334155;
-  border-radius: 10px;
+  background: rgba(148, 163, 184, 0.2);
+  border-radius: 9999px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #475569;
+  background: rgba(148, 163, 184, 0.4);
 }

@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { createContext, createElement, useContext, useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
 
 export type Theme = 'slate' | 'ocean' | 'emerald' | 'rose';
 export type WidgetSize = 'small' | 'medium' | 'large';
@@ -13,6 +14,7 @@ export interface WidgetSettings {
 
 export interface AppSettings {
   theme: Theme;
+  /** @deprecated A chave agora fica criptografada no processo main. Lida só para migrar. */
   geminiApiKey?: string;
   widgets: Record<string, WidgetSettings>;
   widgetOrder: string[];
@@ -21,7 +23,6 @@ export interface AppSettings {
 
 const defaultSettings: AppSettings = {
   theme: 'slate',
-  geminiApiKey: '',
   showSupportButton: false,
   widgets: {
     scratchpad: { id: 'scratchpad', enabled: true, size: 'small' },
@@ -37,54 +38,44 @@ const defaultSettings: AppSettings = {
   widgetOrder: ['scratchpad', 'links', 'files', 'kanban', 'pomodoro', 'weather', 'habits', 'ai', 'music']
 };
 
-export function useSettings() {
-  const [settings, setSettings] = useState<AppSettings>(() => {
-    const saved = localStorage.getItem('appSettings');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        const parsedOrder = parsed.widgetOrder || defaultSettings.widgetOrder;
-        const missingWidgets = defaultSettings.widgetOrder.filter(id => !parsedOrder.includes(id));
-        const mergedOrder = [...parsedOrder, ...missingWidgets];
-        
-        return { 
-          ...defaultSettings, 
-          ...parsed, 
-          widgets: { ...defaultSettings.widgets, ...parsed.widgets },
-          widgetOrder: mergedOrder
-        };
-      } catch (e) {
-        console.error('Failed to parse settings', e);
-      }
-    }
+// Cor de fundo do app por tema, usada nos botões nativos da janela.
+const TITLEBAR_COLORS: Record<Theme, string> = {
+  slate: '#0a0e17',
+  ocean: '#030816',
+  emerald: '#02140e',
+  rose: '#12050c'
+};
+
+function loadSettings(): AppSettings {
+  const saved = localStorage.getItem('appSettings');
+  if (!saved) return defaultSettings;
+  try {
+    const parsed = JSON.parse(saved);
+    const parsedOrder: string[] = parsed.widgetOrder || defaultSettings.widgetOrder;
+    const missingWidgets = defaultSettings.widgetOrder.filter(id => !parsedOrder.includes(id));
+    return {
+      ...defaultSettings,
+      ...parsed,
+      widgets: { ...defaultSettings.widgets, ...parsed.widgets },
+      widgetOrder: [...parsedOrder, ...missingWidgets]
+    };
+  } catch (e) {
+    console.error('Failed to parse settings', e);
     return defaultSettings;
-  });
+  }
+}
+
+function useSettingsState() {
+  const [settings, setSettings] = useState<AppSettings>(loadSettings);
 
   useEffect(() => {
     localStorage.setItem('appSettings', JSON.stringify(settings));
+  }, [settings]);
+
+  useEffect(() => {
     document.documentElement.setAttribute('data-theme', settings.theme);
-    
-    // Update native window controls background color
-    if (window.electronAPI && window.electronAPI.changeTheme) {
-      const themeColors: Record<Theme, string> = {
-        slate: '#1e293b',  // slate-800
-        ocean: '#1e3a8a',  // blue-900
-        emerald: '#064e3b',// emerald-900
-        rose: '#881337'    // rose-900
-      };
-      // We pass the widget background color so the window controls blend in with our header (which has bg-widget/30)
-      // Actually our header has bg-widget/30, so it's a mix of app and widget. Let's just use the app background color.
-      const appColors: Record<Theme, string> = {
-        slate: '#0f172a',  // slate-900
-        ocean: '#020617',  // slate-950
-        emerald: '#020617',// slate-950
-        rose: '#020617'    // slate-950
-      };
-      
-      // Let's use the app color because our header is largely transparent over the app bg
-      window.electronAPI.changeTheme(appColors[settings.theme]);
-    }
-  }, [settings.theme, settings]);
+    window.electronAPI?.changeTheme(TITLEBAR_COLORS[settings.theme]);
+  }, [settings.theme]);
 
   const updateTheme = (theme: Theme) => {
     setSettings(s => ({ ...s, theme }));
@@ -93,20 +84,14 @@ export function useSettings() {
   const toggleWidget = (id: string, enabled: boolean) => {
     setSettings(s => ({
       ...s,
-      widgets: {
-        ...s.widgets,
-        [id]: { ...s.widgets[id], enabled }
-      }
+      widgets: { ...s.widgets, [id]: { ...s.widgets[id], enabled } }
     }));
   };
 
   const resizeWidget = (id: string, size: WidgetSize) => {
     setSettings(s => ({
       ...s,
-      widgets: {
-        ...s.widgets,
-        [id]: { ...s.widgets[id], size }
-      }
+      widgets: { ...s.widgets, [id]: { ...s.widgets[id], size } }
     }));
   };
 
@@ -119,4 +104,20 @@ export function useSettings() {
   };
 
   return { settings, updateTheme, toggleWidget, resizeWidget, reorderWidgets, updateSettings };
+}
+
+export type SettingsApi = ReturnType<typeof useSettingsState>;
+
+// Um único estado compartilhado por todo o app. Antes cada componente que chamava
+// useSettings() tinha sua própria cópia, e uma sobrescrevia a outra no localStorage.
+const SettingsContext = createContext<SettingsApi | null>(null);
+
+export function SettingsProvider({ children }: { children: ReactNode }) {
+  return createElement(SettingsContext.Provider, { value: useSettingsState() }, children);
+}
+
+export function useSettings(): SettingsApi {
+  const ctx = useContext(SettingsContext);
+  if (!ctx) throw new Error('useSettings precisa estar dentro de <SettingsProvider>');
+  return ctx;
 }
