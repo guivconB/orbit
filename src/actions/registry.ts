@@ -199,6 +199,30 @@ export const ACTIONS: readonly OrbitAction[] = [
     },
   },
   {
+    id: 'set_focus_durations',
+    title: 'Ajustar Pomodoro',
+    description: 'Muda as durações padrão do Pomodoro (foco, pausa curta, pausa longa e a cada quantos ciclos vem a pausa longa).',
+    keywords: ['pomodoro', 'duração', 'tempo', 'configurar', 'ajustar'],
+    params: [
+      { name: 'work', type: 'number', description: 'Minutos de foco', min: MIN_MINUTES, max: MAX_MINUTES },
+      { name: 'break', type: 'number', description: 'Minutos da pausa curta', min: MIN_MINUTES, max: MAX_MINUTES },
+      { name: 'long_break', type: 'number', description: 'Minutos da pausa longa', min: MIN_MINUTES, max: MAX_MINUTES },
+      { name: 'long_break_every', type: 'number', description: 'Pausa longa a cada N ciclos', min: 2, max: 12 },
+    ],
+    run(p, ctx) {
+      const patch = {
+        ...(num(p.work) !== undefined ? { work: num(p.work) } : {}),
+        ...(num(p.break) !== undefined ? { break: num(p.break) } : {}),
+        ...(num(p.long_break) !== undefined ? { longBreak: num(p.long_break) } : {}),
+        ...(num(p.long_break_every) !== undefined ? { longBreakEvery: num(p.long_break_every) } : {}),
+      };
+      if (Object.keys(patch).length === 0) throw new Error('Diga pelo menos uma duração para mudar.');
+      ctx.focus.setDurations(patch);
+      const d = { ...ctx.focus.durations, ...patch };
+      return `Pomodoro ajustado: foco ${d.work} min, pausa ${d.break} min, pausa longa ${d.longBreak} min a cada ${d.longBreakEvery} ciclos.`;
+    },
+  },
+  {
     id: 'play_music',
     title: 'Tocar música',
     description: 'Troca o player. lofi começa a tocar na hora; spotify só abre o player (o Spotify exige clicar em play).',

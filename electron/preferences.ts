@@ -27,6 +27,7 @@ export interface Preferences {
   openAtLogin: boolean;
   startMode: StartMode;
   shortcut: string;
+  shortcutOpensPalette: boolean;
   windowBounds?: WindowBounds;
   maximized?: boolean;
 }
@@ -35,6 +36,7 @@ const defaults: Preferences = {
   openAtLogin: true,
   startMode: 'fullscreen',
   shortcut: 'CommandOrControl+Space',
+  shortcutOpensPalette: true,
 };
 
 const filePath = () => path.join(app.getPath('userData'), 'preferences.json');

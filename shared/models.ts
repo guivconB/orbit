@@ -66,15 +66,12 @@ export interface OrbitPlugin {
   content: string;
 }
 
-export interface ChatTurn {
-  role: 'user' | 'model';
-  text: string;
-}
-
 export interface OrbitPreferences {
   openAtLogin: boolean;
   startMode: 'fullscreen' | 'window';
   shortcut: string;
+  /** O atalho global, ao mostrar o Orbit, já abre a paleta de comandos */
+  shortcutOpensPalette: boolean;
   shortcutOptions: string[];
   isPackaged: boolean;
 }

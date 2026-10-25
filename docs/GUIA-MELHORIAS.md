@@ -162,6 +162,8 @@ export const WIDGETS = [
 ## Fase 2 — Experiência (o que deixa o app "menos chato")
 
 ### 2.1 Paleta de comandos (Ctrl+K) — M ⭐ maior impacto
+> ✅ **Feito na v5.0** (`src/components/palette/`, lógica em `src/palette/items.ts`): captura rápida de tarefa/ideia, calculadora (`src/lib/calc.ts`, sem `eval`), "foco 40", busca em tarefas/hábitos/links/arquivos, todos os comandos do registro de ações (com formulário automático para parâmetros), "Perguntar à IA" e opção para o atalho global já abrir a paleta.
+
 Uma caixa de busca que faz tudo pelo teclado:
 `> tarefa Comprar café` · `> hábito` · `> link github` · `> pomodoro 50` · `> tema oceano` · busca em notas/tarefas/links/arquivos.
 Lib: `cmdk`. Combinar com o atalho global: `Ctrl+Espaço` abre o Orbit **já com a paleta focada** → captura rápida em 2 segundos de qualquer lugar do Windows.
@@ -170,6 +172,8 @@ Lib: `cmdk`. Combinar com o atalho global: `Ctrl+Espaço` abre o Orbit **já com
 Tela cheia toda vez cansa. Criar uma segunda janela pequena (`alwaysOnTop`, sem moldura, ~360×520) com: próxima tarefa, pomodoro, hábitos do dia. Opção nas Configurações: "Abrir em: Tela cheia / Janela / Mini".
 
 ### 2.3 Pomodoro de verdade — M
+> ✅ **Parte feita na v5.0:** horário de término, durações configuráveis (foco, pausa, pausa longa, a cada N ciclos), atalhos 15/25/45/60, contador de ciclos, progresso na barra de tarefas e na bandeja, som ao terminar. **Falta:** vincular a uma tarefa e salvar sessões em `focus_sessions` (base para estatísticas, 3.7).
+
 - Calcular pelo horário de término (`endsAt = Date.now() + dur`), não decrementando a cada segundo.
 - Durações configuráveis, pausa longa a cada 4 ciclos, contador de ciclos do dia.
 - Vincular a uma tarefa ("focando em: X") e salvar sessões numa tabela `focus_sessions`.
@@ -247,6 +251,8 @@ Também ajuda muito fazer antes a **Fase 1** (tipos, `useCollection`, `WidgetShe
 | **A1. Controle do painel por linguagem natural** (= 3.1) | ✅ | M–G | O `@google/genai` já instalado suporta ferramentas (`config.tools[].functionDeclarations`, resposta em `functionCalls`) e o `gemini-flash-latest` as aceita |
 | **A2. Daily Briefing** (= 3.2) | ✅ | P (depois de A1) | 1 chamada por dia, cabe no plano gratuito |
 | **A3. Scratchpad com IA** | ✅ | P–M | Usa saída estruturada (`responseSchema`) para "extrair tarefas" vir como JSON confiável |
+
+> ✅ **A1 feito na v5.0.** O laço do agente fica na tela (`src/ai/agent.ts`, testado sem rede) e o main só faz a chamada (`ai-generate`, devolvendo o `content` com `thoughtSignature`). As ferramentas são o registro de ações (`toToolDeclarations`). Ações destrutivas pedem confirmação no chat. Ainda não testado com uma chave real do Gemini.
 
 **A1 — como implementar**
 1. Em `electron/ai.ts`, declarar as ferramentas a partir do registro de ações (P2): `add_task(title, status, priority?)`, `complete_task(id)`, `list_tasks(filter)`, `start_focus(minutes, music?)`, `play_music(provider: 'lofi' | 'spotify')`, `toggle_habit(name, date?)`, `set_theme(theme)`.
@@ -326,7 +332,7 @@ Atualizada em 24/10/2026 com os Caminhos A e B.
 |---|---|---|
 | ✅ 1 | Fase 0 (correções e segurança) + redesign | v4.1 |
 | ✅ 2 | Fase 1 (fundação) + pré-requisitos P1–P4 | — |
-| 3 | **Ctrl+K** + **A1 IA com ações** (as duas usam o mesmo registro de ações) + Pomodoro com durações livres (2.3) | **v5.0** |
+| ✅ 3 | **Ctrl+K** + **A1 IA com ações** (as duas usam o mesmo registro de ações) + Pomodoro com durações livres (2.3) | **v5.0** |
 | 4 | A2 Daily Briefing + A3 Scratchpad com IA + Modo Zen + Sons ambiente | v5.1 |
 | 5 | 2.4 Tarefas (prioridade, prazo, reordenar) + 2.7 Onboarding + 3.8 Backup `.json` | v5.2 |
 | 6 | API de plugins v2 + B1 Monitor (widget nativo) + B3 Finanças + B2 RSS | v5.3 |

@@ -16,6 +16,10 @@ export function registerPreferencesHandlers() {
       next.openAtLogin = patch.openAtLogin;
       applyLoginItem(patch.openAtLogin);
     }
+    if ('shortcutOpensPalette' in patch) {
+      if (typeof patch.shortcutOpensPalette !== 'boolean') throw new Error('Parâmetro inválido: shortcutOpensPalette');
+      next.shortcutOpensPalette = patch.shortcutOpensPalette;
+    }
     if ('startMode' in patch) {
       next.startMode = oneOf(patch.startMode, START_MODES, 'startMode');
     }

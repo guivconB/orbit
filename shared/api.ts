@@ -1,8 +1,8 @@
 // Contrato da ponte exposta em window.electronAPI (electron/preload.ts).
 // O preload é checado contra este tipo, então tela e main não saem de sincronia.
 
+import type { AiGenerateRequest, AiGenerateResult } from './ai';
 import type {
-  ChatTurn,
   DataTopic,
   FileShortcut,
   Habit,
@@ -16,9 +16,13 @@ import type {
   TaskStatus,
 } from './models';
 
-export type PreferencesPatch = Partial<Pick<OrbitPreferences, 'openAtLogin' | 'startMode' | 'shortcut'>>;
+export type PreferencesPatch = Partial<Pick<OrbitPreferences, 'openAtLogin' | 'startMode' | 'shortcut' | 'shortcutOpensPalette'>>;
 
-export type ChatResult = { ok: true; text: string } | { ok: false; error: string };
+/** Progresso do Pomodoro para a barra de tarefas e a bandeja. progress: 0–1, ou null quando parado. */
+export interface FocusProgress {
+  progress: number | null;
+  label: string;
+}
 
 export interface ElectronAPI {
   getNote: () => Promise<string>;
@@ -48,6 +52,7 @@ export interface ElectronAPI {
   changeTheme: (color: string) => void;
   showNotification: (title: string, body: string) => void;
   toggleFullscreen: () => void;
+  setFocusProgress: (state: FocusProgress) => void;
 
   getPreferences: () => Promise<OrbitPreferences>;
   setPreferences: (patch: PreferencesPatch) => Promise<{ ok: boolean; error?: string; prefs: OrbitPreferences }>;
@@ -55,11 +60,15 @@ export interface ElectronAPI {
   ai: {
     hasKey: () => Promise<boolean>;
     setKey: (key: string) => Promise<boolean>;
-    chat: (history: ChatTurn[], message: string) => Promise<ChatResult>;
+    /** Uma rodada com o Gemini (com ferramentas). O laço do agente fica em src/ai/agent.ts. */
+    generate: (request: AiGenerateRequest) => Promise<AiGenerateResult>;
   };
 
   getPlugins: () => Promise<OrbitPlugin[]>;
 
   /** Chamado quando o main altera dados de uma área. Retorna a função para cancelar. */
   onDataChanged: (callback: (topic: DataTopic) => void) => () => void;
+
+  /** Chamado quando o atalho global pede para abrir a paleta de comandos. */
+  onOpenPalette: (callback: () => void) => () => void;
 }

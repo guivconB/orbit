@@ -1,37 +1,10 @@
-import { app, BrowserWindow, Menu, Notification, Tray, globalShortcut, nativeImage } from 'electron';
-import path from 'path';
+import { app, BrowserWindow, Notification, globalShortcut } from 'electron';
 import { initDatabase } from './database';
 import { getPreferences } from './preferences';
 import { applyLoginItem, registerShortcut } from './system';
-import { createWindow, getMainWindow, isDev, saveWindowState, setQuitting, showWindow } from './window';
+import { createWindow, saveWindowState, setQuitting, showWindow } from './window';
+import { createTray } from './tray';
 import { registerIpcHandlers } from './ipc';
-
-let tray: Tray | null = null;
-
-function createTray() {
-  const iconPath = path.join(__dirname, isDev ? '../public/orbit.jpg' : '../dist/orbit.jpg');
-  let icon = nativeImage.createFromPath(iconPath);
-  if (!icon.isEmpty()) icon = icon.resize({ width: 16, height: 16 });
-
-  tray = new Tray(icon);
-  tray.setToolTip('Orbit Dashboard');
-  tray.setContextMenu(Menu.buildFromTemplate([
-    { label: 'Abrir Painel', click: showWindow },
-    { type: 'separator' },
-    {
-      label: 'Sair',
-      click: () => {
-        setQuitting();
-        app.quit();
-      },
-    },
-  ]));
-  tray.on('click', () => {
-    const win = getMainWindow();
-    if (win?.isVisible()) win.hide();
-    else showWindow();
-  });
-}
 
 function start() {
   const prefs = getPreferences();

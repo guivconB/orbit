@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import type { CSSProperties } from 'react';
-import { Settings, Expand, Heart } from 'lucide-react';
+import { Settings, Expand, Heart, Command } from 'lucide-react';
 import { SettingsModal } from './components/SettingsModal';
 import { SupportModal } from './components/SupportModal';
 import { SortableWidget } from './components/SortableWidget';
 import { PluginFrame } from './components/PluginFrame';
 import { Toaster } from './components/ui/Toaster';
+import { CommandPalette } from './components/palette/CommandPalette';
 import { useSettings } from './hooks/useSettings';
 import { useCloudSync } from './hooks/useCloudSync';
 import { WIDGET_COMPONENTS } from './widgets/registry';
@@ -35,6 +36,7 @@ function App() {
   const [plugins, setPlugins] = useState<OrbitPlugin[]>([]);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isSupportOpen, setIsSupportOpen] = useState(false);
+  const [isPaletteOpen, setIsPaletteOpen] = useState(false);
   const { settings, reorderWidgets, updateSettings } = useSettings();
   const settingsRef = useRef(settings);
   const updateSettingsRef = useRef(updateSettings);
@@ -81,6 +83,22 @@ function App() {
   }, []);
 
   useCloudSync();
+
+  // Paleta de comandos: Ctrl+K dentro do app, ou o atalho global (aviso vindo do main).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setIsPaletteOpen(open => !open);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    const unsubscribe = window.electronAPI?.onOpenPalette(() => setIsPaletteOpen(true));
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      unsubscribe?.();
+    };
+  }, []);
 
   // Migra a chave do Gemini que ficava em texto puro no localStorage
   // para o armazenamento criptografado do processo main.
@@ -189,6 +207,15 @@ function App() {
             <Expand size={15} />
           </button>
           <button 
+            onClick={() => setIsPaletteOpen(true)}
+            className="h-8 px-2 rounded-lg flex items-center gap-1.5 hover:bg-white/[0.08] text-slate-400 hover:text-white transition-colors"
+            title="Paleta de comandos (Ctrl+K)"
+            aria-label="Abrir paleta de comandos"
+          >
+            <Command size={14} />
+            <kbd className="text-[10px] font-mono">Ctrl K</kbd>
+          </button>
+          <button 
             onClick={() => setIsSettingsOpen(true)}
             className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/[0.08] text-slate-400 hover:text-white transition-colors"
             title="Configurações"
@@ -233,6 +260,8 @@ function App() {
         isOpen={isSupportOpen} 
         onClose={() => setIsSupportOpen(false)} 
       />
+
+      <CommandPalette open={isPaletteOpen} onClose={() => setIsPaletteOpen(false)} />
 
       <Toaster />
     </div>

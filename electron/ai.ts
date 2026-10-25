@@ -2,8 +2,8 @@ import { app, safeStorage } from 'electron';
 import fs from 'fs';
 import path from 'path';
 import { GoogleGenAI } from '@google/genai';
-import type { ChatTurn } from '../shared/models';
-import type { ChatResult } from '../shared/api';
+import { sanitizeContent } from '../shared/ai';
+import type { AiGenerateRequest, AiGenerateResult } from '../shared/ai';
 
 // Alias mantido pelo Google que sempre aponta para o Gemini Flash atual.
 const MODEL = 'gemini-flash-latest';
@@ -40,21 +40,35 @@ function friendlyError(err: unknown): string {
   return `Erro do Gemini: ${msg.slice(0, 300)}`;
 }
 
-export async function chat(
-  history: ChatTurn[],
-  message: string,
-): Promise<ChatResult> {
+/**
+ * Uma rodada com o Gemini. Não executa ferramentas: devolve as chamadas pedidas
+ * pelo modelo para a tela executar pelo registro de ações e mandar o resultado
+ * na próxima rodada. O `content` volta inteiro (com thoughtSignature), como o
+ * Gemini exige no histórico.
+ */
+export async function generate(req: AiGenerateRequest): Promise<AiGenerateResult> {
   try {
     const apiKey = getKey();
     if (!apiKey) return { ok: false, error: 'Nenhuma chave de API configurada.' };
 
     const ai = new GoogleGenAI({ apiKey });
-    const session = ai.chats.create({
+    const res = await ai.models.generateContent({
       model: MODEL,
-      history: history.map(t => ({ role: t.role, parts: [{ text: t.text }] })),
+      contents: req.contents,
+      config: {
+        systemInstruction: req.systemInstruction,
+        temperature: 0.4,
+        ...(req.tools.length > 0
+          ? { tools: [{ functionDeclarations: req.tools }], automaticFunctionCalling: { disable: true } }
+          : {}),
+      },
     });
-    const res = await session.sendMessage({ message });
-    return { ok: true, text: res.text ?? '' };
+
+    const raw = res.candidates?.[0]?.content;
+    const content = sanitizeContent({ role: 'model', parts: raw?.parts ?? [] }) ?? { role: 'model', parts: [] };
+    const functionCalls = content.parts.flatMap(p => (p.functionCall ? [p.functionCall] : []));
+    const text = content.parts.filter(p => p.text && !p.thought).map(p => p.text).join('').trim();
+    return { ok: true, content, text, functionCalls };
   } catch (err) {
     console.error('Gemini:', err);
     return { ok: false, error: friendlyError(err) };

@@ -1,5 +1,5 @@
 import { app, globalShortcut } from 'electron';
-import { SHORTCUT_OPTIONS } from './preferences';
+import { getPreferences, SHORTCUT_OPTIONS } from './preferences';
 import type { Preferences } from './preferences';
 import type { OrbitPreferences } from '../shared/models';
 import { toggleWindow } from './window';
@@ -14,7 +14,7 @@ export function registerShortcut(accelerator: string): boolean {
   globalShortcut.unregisterAll();
   if (!accelerator) return true;
   try {
-    return globalShortcut.register(accelerator, toggleWindow);
+    return globalShortcut.register(accelerator, () => toggleWindow({ openPalette: getPreferences().shortcutOpensPalette }));
   } catch {
     return false;
   }
@@ -25,6 +25,7 @@ export function publicPreferences(p: Preferences): OrbitPreferences {
     openAtLogin: p.openAtLogin,
     startMode: p.startMode,
     shortcut: p.shortcut,
+    shortcutOpensPalette: p.shortcutOpensPalette,
     shortcutOptions: [...SHORTCUT_OPTIONS],
     isPackaged: app.isPackaged,
   };

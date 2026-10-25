@@ -1,47 +1,58 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import { clampMinutes } from './limits';
+import { clampMinutes, formatClock, nextCycle, normalizeDurations } from './limits';
+import type { FocusDurations, FocusMode } from './limits';
+import { playChime } from './chime';
 
 // Estado global do Pomodoro e do player de música.
 // Fica acima dos widgets para que paleta de comandos, IA e Modo Zen possam
 // iniciar o foco ou trocar a música, e para o timer continuar rodando
 // mesmo com o widget do Pomodoro desativado.
 
-export type FocusMode = 'work' | 'break';
+export type { FocusDurations, FocusMode };
 export type MusicProvider = 'spotify' | 'youtube';
 
-export interface FocusDurations {
-  /** minutos */
-  work: number;
-  break: number;
-}
-
-const DEFAULT_DURATIONS: FocusDurations = { work: 25, break: 5 };
-const STORAGE_KEY = 'orbit_focus_durations';
+const DURATIONS_KEY = 'orbit_focus_durations';
+const SOUND_KEY = 'orbit_focus_sound';
 
 function loadDurations(): FocusDurations {
   try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? 'null');
-    if (saved && typeof saved.work === 'number' && typeof saved.break === 'number') {
-      return { work: clampMinutes(saved.work), break: clampMinutes(saved.break) };
-    }
+    return normalizeDurations(JSON.parse(localStorage.getItem(DURATIONS_KEY) ?? 'null'));
   } catch {
-    // ignora valor corrompido
+    return normalizeDurations(null);
   }
-  return DEFAULT_DURATIONS;
+}
+
+function loadSound(): boolean {
+  try {
+    return localStorage.getItem(SOUND_KEY) !== 'off';
+  } catch {
+    return true;
+  }
+}
+
+function save(key: string, value: string) {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // sem armazenamento: vale só nesta sessão
+  }
 }
 
 export interface FocusApi {
   mode: FocusMode;
+  /** a pausa atual é a pausa longa */
+  isLongBreak: boolean;
   /** segundos restantes */
   timeLeft: number;
   /** duração total do ciclo atual, em segundos */
   total: number;
   isRunning: boolean;
   durations: FocusDurations;
+  soundEnabled: boolean;
   /** ciclos de foco concluídos desde que o app abriu */
   completedCycles: number;
-  /** Inicia um ciclo. Sem argumentos, usa a duração padrão do modo. */
+  /** Inicia um ciclo. Sem argumentos, usa a duração configurada do modo. */
   start: (options?: { minutes?: number; mode?: FocusMode }) => void;
   pause: () => void;
   /** Pausa se estiver rodando; senão continua de onde parou. */
@@ -49,6 +60,7 @@ export interface FocusApi {
   reset: () => void;
   switchMode: (mode: FocusMode) => void;
   setDurations: (patch: Partial<FocusDurations>) => void;
+  setSoundEnabled: (enabled: boolean) => void;
 }
 
 export interface MusicApi {
@@ -65,7 +77,9 @@ const MusicContext = createContext<MusicApi | null>(null);
 
 export function FocusProvider({ children }: { children: ReactNode }) {
   const [durations, setDurationsState] = useState<FocusDurations>(loadDurations);
+  const [soundEnabled, setSoundState] = useState(loadSound);
   const [mode, setMode] = useState<FocusMode>('work');
+  const [isLongBreak, setIsLongBreak] = useState(false);
   const [total, setTotal] = useState(() => loadDurations().work * 60);
   const [timeLeft, setTimeLeft] = useState(total);
   // Horário (ms) em que o ciclo termina. null = pausado.
@@ -85,30 +99,53 @@ export function FocusProvider({ children }: { children: ReactNode }) {
       if (left > 0) return;
 
       setEndsAt(null);
-      const next: FocusMode = mode === 'work' ? 'break' : 'work';
-      if (mode === 'work') setCompletedCycles(c => c + 1);
+      const done = mode === 'work' ? completedCycles + 1 : completedCycles;
+      const next = nextCycle(mode, done, durations);
+      if (mode === 'work') setCompletedCycles(done);
+      if (soundEnabled) playChime();
       window.electronAPI?.showNotification(
         mode === 'work' ? 'Pomodoro Finalizado!' : 'Pausa Finalizada!',
-        mode === 'work' ? 'Hora de fazer uma pausa.' : 'Hora de voltar ao foco.',
+        mode === 'work'
+          ? next.isLongBreak ? `${done} ciclos! Hora da pausa longa (${durations.longBreak} min).` : 'Hora de fazer uma pausa.'
+          : 'Hora de voltar ao foco.',
       );
-      setMode(next);
-      setTotal(durations[next] * 60);
-      setTimeLeft(durations[next] * 60);
+      setMode(next.mode);
+      setIsLongBreak(next.isLongBreak);
+      setTotal(next.seconds);
+      setTimeLeft(next.seconds);
     };
 
     tick();
     const interval = setInterval(tick, 250);
     return () => clearInterval(interval);
-  }, [endsAt, mode, durations]);
+  }, [endsAt, mode, durations, completedCycles, soundEnabled]);
+
+  // Progresso na barra de tarefas do Windows e tempo restante na dica da bandeja.
+  useEffect(() => {
+    const api = window.electronAPI;
+    if (!api) return;
+    if (endsAt === null) {
+      api.setFocusProgress({ progress: null, label: '' });
+      return;
+    }
+    const label = mode === 'work' ? 'Foco' : isLongBreak ? 'Pausa longa' : 'Pausa';
+    api.setFocusProgress({ progress: total > 0 ? (total - timeLeft) / total : 0, label: `${label} ${formatClock(timeLeft)}` });
+  }, [endsAt, timeLeft, total, mode, isLongBreak]);
+
+  const durationFor = useCallback(
+    (m: FocusMode, long: boolean) => (m === 'work' ? durations.work : long ? durations.longBreak : durations.break),
+    [durations],
+  );
 
   const start = useCallback<FocusApi['start']>((options = {}) => {
     const nextMode = options.mode ?? 'work';
-    const seconds = (options.minutes ? clampMinutes(options.minutes) : durations[nextMode]) * 60;
+    const seconds = (options.minutes ? clampMinutes(options.minutes) : durationFor(nextMode, false)) * 60;
     setMode(nextMode);
+    setIsLongBreak(false);
     setTotal(seconds);
     setTimeLeft(seconds);
     setEndsAt(Date.now() + seconds * 1000);
-  }, [durations]);
+  }, [durationFor]);
 
   const pause = useCallback(() => setEndsAt(null), []);
 
@@ -117,31 +154,36 @@ export function FocusProvider({ children }: { children: ReactNode }) {
   }, [timeLeft]);
 
   const reset = useCallback(() => {
+    const seconds = durationFor(mode, isLongBreak) * 60;
     setEndsAt(null);
-    setTotal(durations[mode] * 60);
-    setTimeLeft(durations[mode] * 60);
-  }, [durations, mode]);
+    setTotal(seconds);
+    setTimeLeft(seconds);
+  }, [durationFor, mode, isLongBreak]);
 
   const switchMode = useCallback((nextMode: FocusMode) => {
+    const seconds = durationFor(nextMode, false) * 60;
     setEndsAt(null);
     setMode(nextMode);
-    setTotal(durations[nextMode] * 60);
-    setTimeLeft(durations[nextMode] * 60);
-  }, [durations]);
+    setIsLongBreak(false);
+    setTotal(seconds);
+    setTimeLeft(seconds);
+  }, [durationFor]);
 
   const setDurations = useCallback((patch: Partial<FocusDurations>) => {
-    setDurationsState(current => {
-      const next = {
-        work: patch.work !== undefined ? clampMinutes(patch.work) : current.work,
-        break: patch.break !== undefined ? clampMinutes(patch.break) : current.break,
-      };
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-      } catch {
-        // sem armazenamento: vale só nesta sessão
-      }
-      return next;
-    });
+    const next = normalizeDurations({ ...durations, ...patch }, durations);
+    save(DURATIONS_KEY, JSON.stringify(next));
+    setDurationsState(next);
+    // Parado no início de um ciclo: a nova duração vale na hora.
+    if (endsAt === null && timeLeft === total) {
+      const seconds = (mode === 'work' ? next.work : isLongBreak ? next.longBreak : next.break) * 60;
+      setTotal(seconds);
+      setTimeLeft(seconds);
+    }
+  }, [durations, endsAt, timeLeft, total, mode, isLongBreak]);
+
+  const setSoundEnabled = useCallback((enabled: boolean) => {
+    setSoundState(enabled);
+    save(SOUND_KEY, enabled ? 'on' : 'off');
   }, []);
 
   const playLofi = useCallback(() => {
@@ -150,9 +192,10 @@ export function FocusProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const focus = useMemo<FocusApi>(() => ({
-    mode, timeLeft, total, isRunning: endsAt !== null, durations, completedCycles,
-    start, pause, toggle, reset, switchMode, setDurations,
-  }), [mode, timeLeft, total, endsAt, durations, completedCycles, start, pause, toggle, reset, switchMode, setDurations]);
+    mode, isLongBreak, timeLeft, total, isRunning: endsAt !== null, durations, soundEnabled, completedCycles,
+    start, pause, toggle, reset, switchMode, setDurations, setSoundEnabled,
+  }), [mode, isLongBreak, timeLeft, total, endsAt, durations, soundEnabled, completedCycles,
+    start, pause, toggle, reset, switchMode, setDurations, setSoundEnabled]);
 
   const music = useMemo<MusicApi>(() => ({ provider, autoplayToken, setProvider, playLofi }), [provider, autoplayToken, playLofi]);
 

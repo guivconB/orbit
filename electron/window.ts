@@ -22,9 +22,14 @@ export function showWindow() {
   mainWindow.focus();
 }
 
-export function toggleWindow() {
-  if (mainWindow?.isVisible() && mainWindow.isFocused()) mainWindow.hide();
-  else showWindow();
+/** Esconde se o Orbit estiver na frente; senão mostra (e, se pedido, já abre a paleta). */
+export function toggleWindow(options: { openPalette?: boolean } = {}) {
+  if (mainWindow?.isVisible() && mainWindow.isFocused()) {
+    mainWindow.hide();
+    return;
+  }
+  showWindow();
+  if (options.openPalette) mainWindow?.webContents.send('open-palette');
 }
 
 // Só reaproveita a posição salva se ela ainda cair em algum monitor conectado.

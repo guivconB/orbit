@@ -93,6 +93,24 @@ export function SystemSection() {
           </select>
         </div>
 
+        <div className="flex items-center justify-between p-3.5 rounded-2xl bg-black/20 border border-white/[0.06]">
+          <div>
+            <span className="font-semibold text-slate-200 block text-xs">Atalho abre a paleta</span>
+            <span className="text-[11px] text-slate-400 block mt-0.5">Ao mostrar o Orbit pelo atalho global, já abre a paleta de comandos (Ctrl+K)</span>
+          </div>
+          <button
+            onClick={() => update({ shortcutOpensPalette: !prefs.shortcutOpensPalette })}
+            className={clsx(
+              'relative w-11 h-6 rounded-full transition-colors shrink-0 cursor-pointer',
+              prefs.shortcutOpensPalette ? 'bg-accent shadow-sm shadow-accent/25' : 'bg-white/10'
+            )}
+            aria-pressed={prefs.shortcutOpensPalette}
+            aria-label="Atalho abre a paleta"
+          >
+            <span className={clsx('absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform', prefs.shortcutOpensPalette && 'translate-x-5')} />
+          </button>
+        </div>
+
         {error && <p className="text-xs text-rose-400 px-1">{error}</p>}
       </div>
     </section>

@@ -11,10 +11,12 @@ Um painel de produtividade pessoal, modular e infinitamente expansível desenvol
 - 📜 **Histórico de Versões & Changelog Integrado**: Registro cronológico de todas as funcionalidades entregues da V1 até a V4, embutido diretamente nas configurações.
 - 🧩 **Sistema Dinâmico de Plugins**: Carregue novos widgets e utilitários externos (arquivos `.html`) diretamente da pasta `Documentos/Orbit-Plugins` no seu computador. Eles rodam isolados do app (ver [Plugins](#-plugins)).
 - ☁️ **Sincronização em Nuvem (Firebase)**: Login com e-mail e senha, backup automático do Bloco de Notas e das Tarefas e restauração em outro PC.
-- 🤖 **Assistente de IA Integrado (Gemini)**: Chat embutido no painel (SDK `@google/genai`). A chave fica criptografada pelo Windows e nunca sai do processo principal.
+- ⚡ **Paleta de Comandos (`Ctrl + K`)**: Crie tarefas digitando, faça contas, inicie o foco ("foco 40"), encontre links, arquivos e hábitos e rode qualquer comando sem tirar as mãos do teclado.
+- 🤖 **Assistente de IA que age (Gemini)**: Além de conversar, mexe no painel: "adiciona Estudar React com prioridade alta", "quero focar 40 min com lofi", "marca o hábito de água". Ações que apagam dados pedem confirmação. A chave fica criptografada pelo Windows e nunca sai do processo principal.
 - 🎵 **Player de Foco Híbrido**: Alternância instantânea entre Spotify e uma rádio Lo-Fi ao vivo no YouTube Music.
 - 🖱️ **Grade Livre com Drag & Drop**: Arraste e solte widgets para reorganizar a interface como preferir.
 - ⌨️ **Atalho Global no Windows (`Ctrl + Espaço` por padrão)**: Exiba ou oculte o Orbit de qualquer lugar. Pode ser trocado ou desativado em Configurações > Sistema.
+- ⏱️ **Pomodoro configurável**: Durações livres, pausa longa a cada N ciclos, atalhos 15/25/45/60 min, som ao terminar e progresso no ícone da barra de tarefas.
 - 🔔 **Notificações Nativas do Windows**: Alertas integrados ao sistema operacional para os ciclos do Pomodoro.
 - 📊 **Heatmap de Hábitos (35 dias)**: Visualização em estilo GitHub para acompanhar sua consistência diária.
 - 🎨 **Temas & Customização**: 4 temas modernos (Escuro Clássico, Oceano Profundo, Floresta, Crepúsculo) com redimensionamento de cartões (P, M, G).
@@ -127,7 +129,9 @@ Roda lint, verificação de tipos e testes (Vitest). O mesmo roda no GitHub Acti
 | `electron/` | Processo principal: janela, banco (`migrations.ts`), IA, preferências |
 | `electron/ipc/` | Um arquivo por área (tarefas, hábitos, links...). Toda alteração avisa a tela com `data-changed` |
 | `src/widgets/` | Catálogo e registro dos widgets: para criar um widget novo, adicione-o nos dois |
-| `src/actions/` | Ações do Orbit (criar tarefa, iniciar foco...). Serão usadas pela paleta `Ctrl+K` e pela IA |
+| `src/actions/` | Ações do Orbit (criar tarefa, iniciar foco...). A mesma lista alimenta a paleta `Ctrl+K` e as ferramentas da IA |
+| `src/ai/` | Laço do agente da IA (pede ao Gemini, executa as ações, devolve o resultado) |
+| `src/palette/` | Lógica da paleta de comandos (resultados, busca, "foco 40") |
 | `src/focus/` | Estado global do Pomodoro e do player |
 | `src/hooks/` | `useCollection` (listas que se atualizam sozinhas), `useSettings`, `useCloudSync` |
 

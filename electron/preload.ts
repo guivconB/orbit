@@ -38,6 +38,7 @@ const api: ElectronAPI = {
   changeTheme: (color) => ipcRenderer.send('change-theme', color),
   showNotification: (title, body) => ipcRenderer.send('show-notification', { title, body }),
   toggleFullscreen: () => ipcRenderer.send('toggle-fullscreen'),
+  setFocusProgress: (state) => ipcRenderer.send('focus-progress', state),
 
   // Preferências do sistema
   getPreferences: () => ipcRenderer.invoke('get-preferences'),
@@ -47,7 +48,7 @@ const api: ElectronAPI = {
   ai: {
     hasKey: () => ipcRenderer.invoke('ai-has-key'),
     setKey: (key) => ipcRenderer.invoke('ai-set-key', key),
-    chat: (history, message) => ipcRenderer.invoke('ai-chat', history, message),
+    generate: (request) => ipcRenderer.invoke('ai-generate', request),
   },
 
   // Plugins
@@ -59,6 +60,14 @@ const api: ElectronAPI = {
     ipcRenderer.on('data-changed', listener);
     return () => {
       ipcRenderer.removeListener('data-changed', listener);
+    };
+  },
+
+  onOpenPalette: (callback) => {
+    const listener = () => callback();
+    ipcRenderer.on('open-palette', listener);
+    return () => {
+      ipcRenderer.removeListener('open-palette', listener);
     };
   },
 };
