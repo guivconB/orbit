@@ -1,144 +1,92 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import { Plus, Trash2, CheckCircle2, Circle } from 'lucide-react';
 import clsx from 'clsx';
+import type { Task, TaskStatus } from '../../shared/models';
+import { useCollection } from '../hooks/useCollection';
+import { WidgetShell, IconButton, EmptyState, inputClass } from './ui/WidgetShell';
 
-export interface TaskItem {
-  id: number;
-  title: string;
-  status: TaskStatus;
-  created_at: string;
-}
+type Tab = 'todo' | 'idea';
+
+const PRIORITY_LABEL = { high: 'Prioridade alta', low: 'Prioridade baixa', normal: '' } as const;
 
 export function KanbanWidget() {
-  const [tasks, setTasks] = useState<TaskItem[]>([]);
-  const [activeTab, setActiveTab] = useState<'todo' | 'idea'>('todo');
+  // A sincronização com a nuvem fica em useCloudSync (App), para valer também
+  // para tarefas criadas pela IA ou pela paleta, e com este widget desativado.
+  const { items: tasks, mutate } = useCollection<Task>('tasks', api => api.getTasks());
+  const [activeTab, setActiveTab] = useState<Tab>('todo');
   const [isAdding, setIsAdding] = useState(false);
   const [newTitle, setNewTitle] = useState('');
-  // Só sincroniza depois de uma alteração do usuário, nunca na carga inicial.
-  const changedByUser = useRef(false);
 
-  const loadTasks = async () => {
-    if (window.electronAPI && window.electronAPI.getTasks) {
-      const data = await window.electronAPI.getTasks();
-      setTasks(data);
-    }
-  };
-
-  useEffect(() => {
-    let active = true;
-    window.electronAPI?.getTasks?.().then(data => {
-      if (active && data) setTasks(data);
-    });
-    return () => { active = false; };
-  }, []);
-
-  // Debounced Cloud Sync for Tasks
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (!changedByUser.current) return;
-      import('../firebase/sync')
-        .then(module => module.syncTasksToCloud(tasks))
-        .catch(err => console.log('Firebase não configurado ou erro:', err));
-    }, 2000);
-    return () => clearTimeout(timer);
-  }, [tasks]);
-
-  const handleAdd = async (e: React.FormEvent) => {
+  const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTitle.trim()) return;
-
-    if (window.electronAPI) {
-      changedByUser.current = true;
-      await window.electronAPI.addTask({ title: newTitle.trim(), status: activeTab });
-      setNewTitle('');
-      setIsAdding(false);
-      loadTasks();
-    }
+    const title = newTitle.trim();
+    if (!title || !window.electronAPI) return;
+    const api = window.electronAPI;
+    setNewTitle('');
+    setIsAdding(false);
+    mutate(null, () => api.addTask({ title, status: activeTab }), 'Não foi possível criar a tarefa.');
   };
 
-  const handleToggleStatus = async (task: TaskItem) => {
-    if (task.status === 'idea') return; // Ideas don't have checkboxes
-    
-    const newStatus = task.status === 'todo' ? 'done' : 'todo';
-    if (window.electronAPI) {
-      changedByUser.current = true;
-      await window.electronAPI.updateTaskStatus(task.id, newStatus);
-      loadTasks();
-    }
+  const handleToggleStatus = (task: Task) => {
+    if (task.status === 'idea' || !window.electronAPI) return;
+    const api = window.electronAPI;
+    const status: TaskStatus = task.status === 'todo' ? 'done' : 'todo';
+    mutate(
+      list => list.map(t => (t.id === task.id ? { ...t, status } : t)),
+      () => api.updateTaskStatus(task.id, status),
+    );
   };
 
-  const handleDelete = async (id: number) => {
-    if (window.electronAPI) {
-      changedByUser.current = true;
-      await window.electronAPI.deleteTask(id);
-      loadTasks();
-    }
+  const handleDelete = (id: number) => {
+    if (!window.electronAPI) return;
+    const api = window.electronAPI;
+    mutate(list => list.filter(t => t.id !== id), () => api.deleteTask(id), 'Não foi possível remover a tarefa.');
   };
 
   const todoPendingCount = tasks.filter(t => t.status === 'todo').length;
   const ideasCount = tasks.filter(t => t.status === 'idea').length;
 
-  const filteredTasks = tasks.filter(t => 
-    activeTab === 'todo' ? (t.status === 'todo' || t.status === 'done') : t.status === 'idea'
+  const filteredTasks = tasks.filter(t =>
+    activeTab === 'todo' ? t.status === 'todo' || t.status === 'done' : t.status === 'idea',
+  );
+
+  const tabButton = (tab: Tab, label: string, count: number) => (
+    <button
+      onClick={() => setActiveTab(tab)}
+      className={clsx(
+        'px-3 py-1.5 text-xs rounded-lg transition-all font-semibold flex items-center gap-1.5 cursor-pointer',
+        activeTab === tab ? 'bg-white/10 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200',
+      )}
+    >
+      <span>{label}</span>
+      <span className={clsx('text-[10px] px-1.5 rounded-full font-mono', activeTab === tab ? 'bg-accent/30 text-accent' : 'text-slate-500')}>
+        {count}
+      </span>
+    </button>
+  );
+
+  const header = (
+    <div className="flex items-center justify-between mb-3">
+      <div className="flex bg-black/30 rounded-xl p-1 border border-white/[0.06]">
+        {tabButton('todo', 'Tarefas', todoPendingCount)}
+        {tabButton('idea', 'Ideias', ideasCount)}
+      </div>
+      <IconButton label="Nova tarefa ou ideia" onClick={() => setIsAdding(!isAdding)}>
+        <Plus size={16} />
+      </IconButton>
+    </div>
   );
 
   return (
-    <div className="orbit-card p-4 flex flex-col max-h-full h-full">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex bg-black/30 rounded-xl p-1 border border-white/[0.06]">
-          <button 
-            onClick={() => setActiveTab('todo')}
-            className={clsx(
-              "px-3 py-1.5 text-xs rounded-lg transition-all font-semibold flex items-center gap-1.5 cursor-pointer",
-              activeTab === 'todo' 
-                ? "bg-white/10 text-white shadow-sm" 
-                : "text-slate-400 hover:text-slate-200"
-            )}
-          >
-            <span>Tarefas</span>
-            <span className={clsx(
-              "text-[10px] px-1.5 py-0.2 rounded-full",
-              activeTab === 'todo' ? "bg-accent/30 text-accent font-mono" : "text-slate-500 font-mono"
-            )}>
-              {todoPendingCount}
-            </span>
-          </button>
-          <button 
-            onClick={() => setActiveTab('idea')}
-            className={clsx(
-              "px-3 py-1.5 text-xs rounded-lg transition-all font-semibold flex items-center gap-1.5 cursor-pointer",
-              activeTab === 'idea' 
-                ? "bg-white/10 text-white shadow-sm" 
-                : "text-slate-400 hover:text-slate-200"
-            )}
-          >
-            <span>Ideias</span>
-            <span className={clsx(
-              "text-[10px] px-1.5 py-0.2 rounded-full",
-              activeTab === 'idea' ? "bg-accent/30 text-accent font-mono" : "text-slate-500 font-mono"
-            )}>
-              {ideasCount}
-            </span>
-          </button>
-        </div>
-        <button 
-          onClick={() => setIsAdding(!isAdding)}
-          className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/[0.08] text-slate-400 hover:text-white transition-colors cursor-pointer"
-          title="Nova Tarefa/Ideia"
-          aria-label="Nova Tarefa ou Ideia"
-        >
-          <Plus size={16} />
-        </button>
-      </div>
-
+    <WidgetShell header={header}>
       {isAdding && (
         <form onSubmit={handleAdd} className="mb-3">
           <input
             type="text"
-            placeholder={activeTab === 'todo' ? "O que fazer hoje?" : "Qual é a sua ideia?"}
+            placeholder={activeTab === 'todo' ? 'O que fazer hoje?' : 'Qual é a sua ideia?'}
             value={newTitle}
             onChange={(e) => setNewTitle(e.target.value)}
-            className="w-full bg-black/30 text-sm text-slate-200 placeholder-slate-500 p-2.5 rounded-xl border border-white/[0.08] outline-none focus:border-accent focus:ring-2 focus:ring-accent/30 transition-all font-sans"
+            className={inputClass}
             autoFocus
             onBlur={() => !newTitle && setIsAdding(false)}
           />
@@ -147,40 +95,47 @@ export function KanbanWidget() {
 
       <div className="flex-1 overflow-y-auto pr-1 space-y-1.5 custom-scrollbar">
         {filteredTasks.length === 0 && !isAdding ? (
-          <div className="flex h-full items-center justify-center text-slate-500 text-xs italic tracking-wide">
-            {activeTab === 'todo' ? "Tudo limpo por hoje!" : "Nenhuma ideia registrada ainda."}
-          </div>
+          <EmptyState>{activeTab === 'todo' ? 'Tudo limpo por hoje!' : 'Nenhuma ideia registrada ainda.'}</EmptyState>
         ) : (
           filteredTasks.map(task => (
             <div key={task.id} className="group flex items-center justify-between p-2.5 rounded-xl hover:bg-white/[0.04] transition-all border border-transparent hover:border-white/[0.04]">
-              <div 
-                className={clsx("flex items-center gap-3 overflow-hidden flex-1", activeTab !== 'idea' && "cursor-pointer")}
+              <div
+                className={clsx('flex items-center gap-3 overflow-hidden flex-1', activeTab !== 'idea' && 'cursor-pointer')}
                 onClick={() => handleToggleStatus(task)}
               >
                 {activeTab === 'todo' && (
-                  task.status === 'done' 
+                  task.status === 'done'
                     ? <CheckCircle2 size={16} className="text-emerald-400 shrink-0 drop-shadow-[0_0_6px_rgba(52,211,153,0.3)]" />
                     : <Circle size={16} className="text-slate-500 group-hover:text-slate-400 shrink-0 transition-colors" />
                 )}
                 <span className={clsx(
-                  "text-sm truncate transition-all duration-200", 
-                  task.status === 'done' ? "text-slate-500 line-through" : "text-slate-200 font-medium"
+                  'text-sm truncate transition-all duration-200',
+                  task.status === 'done' ? 'text-slate-500 line-through' : 'text-slate-200 font-medium',
                 )}>
                   {task.title}
                 </span>
+                {task.priority === 'high' && task.status !== 'done' && (
+                  <span
+                    className="shrink-0 text-[10px] font-bold font-mono px-1.5 rounded-full bg-accent/25 text-accent border border-accent/30"
+                    title={PRIORITY_LABEL.high}
+                  >
+                    !
+                  </span>
+                )}
               </div>
-              <button 
+              <IconButton
+                label="Remover tarefa"
+                tone="danger"
+                size="sm"
                 onClick={() => handleDelete(task.id)}
-                className="opacity-0 group-hover:opacity-100 w-7 h-7 flex items-center justify-center rounded-lg hover:bg-rose-500/20 text-slate-500 hover:text-rose-400 transition-all shrink-0 ml-2 cursor-pointer"
-                title="Remover"
-                aria-label="Remover tarefa"
+                className="opacity-0 group-hover:opacity-100 ml-2"
               >
                 <Trash2 size={14} />
-              </button>
+              </IconButton>
             </div>
           ))
         )}
       </div>
-    </div>
+    </WidgetShell>
   );
 }

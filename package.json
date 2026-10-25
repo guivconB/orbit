@@ -20,6 +20,8 @@
     "start": "npm run build && electron .",
     "lint": "oxlint",
     "typecheck": "tsc -p tsconfig.app.json --noEmit && tsc -p tsconfig.electron.json",
+    "test": "vitest run",
+    "check": "npm run lint && npm run typecheck && npm run test",
     "preview": "vite preview"
   },
   "build": {
@@ -70,6 +72,7 @@
     "tsup": "^8.5.1",
     "typescript": "~6.0.2",
     "vite": "^8.3.0",
+    "vitest": "^5.0.5",
     "wait-on": "^9.1.0"
   }
 }

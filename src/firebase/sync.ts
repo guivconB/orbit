@@ -7,19 +7,14 @@ import {
   signOut,
 } from 'firebase/auth';
 import type { User } from 'firebase/auth';
+import type { Task, TaskBackup } from '../../shared/models';
 
 // Cada usuário logado tem seu próprio documento em users/{uid}.
 // As regras do Firestore (firestore.rules) só deixam o dono ler e escrever.
 
-export interface CloudTask {
-  title: string;
-  status: TaskStatus;
-  created_at?: string;
-}
-
 export interface CloudBackup {
   note?: string;
-  tasks?: CloudTask[];
+  tasks?: TaskBackup[];
   lastSync: string;
 }
 
@@ -52,8 +47,17 @@ async function push(data: Partial<CloudBackup>) {
 
 export const syncNoteToCloud = (note: string) => push({ note });
 
-export const syncTasksToCloud = (tasks: CloudTask[]) =>
-  push({ tasks: tasks.map(t => ({ title: t.title, status: t.status, created_at: t.created_at ?? '' })) });
+// Envia na ordem da lista (position), que é a ordem restaurada em outro PC.
+export const syncTasksToCloud = (tasks: Task[]) =>
+  push({
+    tasks: tasks.map(t => ({
+      title: t.title,
+      status: t.status,
+      priority: t.priority,
+      due_date: t.due_date,
+      created_at: t.created_at ?? '',
+    })),
+  });
 
 /** Devolve o backup da nuvem se ele for mais novo que a última sincronização deste PC. */
 export async function checkForNewerBackup(user: User): Promise<CloudBackup | null> {

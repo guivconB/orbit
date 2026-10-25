@@ -1,94 +1,67 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Plus, Trash2, Check, BarChart2, X } from 'lucide-react';
 import clsx from 'clsx';
+import type { Habit } from '../../shared/models';
 import { localDate, lastDays } from '../lib/date';
-
-export interface HabitItem {
-  id: number;
-  name: string;
-  logs: string[];
-}
+import { useCollection } from '../hooks/useCollection';
+import { WidgetShell, IconButton, EmptyState, inputClass } from './ui/WidgetShell';
 
 const WEEKDAYS = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
 
+const toggleLog = (logs: string[], date: string) =>
+  logs.includes(date) ? logs.filter(d => d !== date) : [...logs, date];
+
 export function HabitsWidget() {
-  const [habits, setHabits] = useState<HabitItem[]>([]);
+  const { items: habits, mutate } = useCollection<Habit>('habits', api => api.getHabits());
   const [isAdding, setIsAdding] = useState(false);
   const [newName, setNewName] = useState('');
-  const [statsHabit, setStatsHabit] = useState<HabitItem | null>(null);
+  // Guarda só o id: os dados vêm sempre da lista atualizada.
+  const [statsHabitId, setStatsHabitId] = useState<number | null>(null);
+  const statsHabit = habits.find(h => h.id === statsHabitId) ?? null;
 
   // Datas locais (não UTC): depois das 21h o "hoje" continua sendo hoje.
   const todayStr = localDate();
   const days = lastDays(5);
 
-  const loadHabits = async () => {
-    if (window.electronAPI && window.electronAPI.getHabits) {
-      const data = await window.electronAPI.getHabits();
-      setHabits(data);
-    }
-  };
-
-  useEffect(() => {
-    let active = true;
-    window.electronAPI?.getHabits?.().then(data => {
-      if (active && data) setHabits(data);
-    });
-    return () => { active = false; };
-  }, []);
-
-  const handleAdd = async (e: React.FormEvent) => {
+  const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newName.trim()) return;
-
-    if (window.electronAPI) {
-      await window.electronAPI.addHabit(newName.trim());
-      setNewName('');
-      setIsAdding(false);
-      loadHabits();
-    }
+    const name = newName.trim();
+    const api = window.electronAPI;
+    if (!name || !api) return;
+    setNewName('');
+    setIsAdding(false);
+    mutate(null, () => api.addHabit(name), 'Não foi possível criar o hábito.');
   };
 
-  const handleToggle = async (habitId: number, date: string) => {
-    if (window.electronAPI) {
-      await window.electronAPI.toggleHabitLog(habitId, date);
-      loadHabits();
-      if (statsHabit && statsHabit.id === habitId) {
-        // Optimistically update statsHabit
-        const isDone = statsHabit.logs.includes(date);
-        setStatsHabit({
-          ...statsHabit,
-          logs: isDone ? statsHabit.logs.filter(d => d !== date) : [...statsHabit.logs, date]
-        });
-      }
-    }
+  const handleToggle = (habitId: number, date: string) => {
+    const api = window.electronAPI;
+    if (!api) return;
+    mutate(
+      list => list.map(h => (h.id === habitId ? { ...h, logs: toggleLog(h.logs, date) } : h)),
+      () => api.toggleHabitLog(habitId, date),
+    );
   };
 
-  const handleDelete = async (id: number) => {
-    if (window.electronAPI) {
-      await window.electronAPI.deleteHabit(id);
-      loadHabits();
-      if (statsHabit && statsHabit.id === id) {
-        setStatsHabit(null);
-      }
-    }
+  const handleDelete = (id: number) => {
+    const api = window.electronAPI;
+    if (!api) return;
+    if (statsHabitId === id) setStatsHabitId(null);
+    mutate(list => list.filter(h => h.id !== id), () => api.deleteHabit(id), 'Não foi possível remover o hábito.');
   };
 
   // Generate last 35 days for stats grid (7 cols x 5 rows)
   const getStatsDays = () => lastDays(35);
 
   return (
-    <div className="orbit-card p-4 flex flex-col max-h-full h-full relative">
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="text-sm font-bold text-slate-100 tracking-wide">Hábitos</h2>
-        <button 
-          onClick={() => setIsAdding(!isAdding)}
-          className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/[0.08] text-slate-400 hover:text-white transition-colors cursor-pointer"
-          title="Adicionar Hábito"
-          aria-label="Adicionar Hábito"
-        >
+    <WidgetShell
+      title="Hábitos"
+      className="relative"
+      actions={
+        <IconButton label="Adicionar hábito" onClick={() => setIsAdding(!isAdding)}>
           <Plus size={16} />
-        </button>
-      </div>
+        </IconButton>
+      }
+    >
 
       {isAdding && (
         <form onSubmit={handleAdd} className="mb-3">
@@ -97,7 +70,7 @@ export function HabitsWidget() {
             placeholder="Ex: Beber 2L de água"
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
-            className="w-full bg-black/30 text-sm text-slate-200 placeholder-slate-500 p-2.5 rounded-xl border border-white/[0.08] outline-none focus:border-accent focus:ring-2 focus:ring-accent/30 transition-all font-sans"
+            className={inputClass}
             autoFocus
             onBlur={() => !newName && setIsAdding(false)}
           />
@@ -116,9 +89,7 @@ export function HabitsWidget() {
       {!statsHabit ? (
         <div className="flex-1 overflow-y-auto pr-1 space-y-2 custom-scrollbar">
           {habits.length === 0 && !isAdding ? (
-            <div className="flex h-full items-center justify-center text-slate-500 text-xs italic tracking-wide">
-              Nenhum hábito rastreado.
-            </div>
+            <EmptyState>Nenhum hábito rastreado.</EmptyState>
           ) : (
             habits.map(habit => (
               <div key={habit.id} className="group flex items-center justify-between p-2 rounded-xl hover:bg-white/[0.03] transition-colors">
@@ -150,7 +121,7 @@ export function HabitsWidget() {
 
                 <div className="flex items-center ml-2 w-12 justify-end shrink-0 opacity-0 group-hover:opacity-100 transition-all gap-1">
                   <button 
-                    onClick={() => setStatsHabit(habit)}
+                    onClick={() => setStatsHabitId(habit.id)}
                     className="w-6 h-6 flex items-center justify-center rounded-md hover:bg-white/[0.08] text-slate-400 hover:text-accent transition-colors cursor-pointer"
                     title="Estatísticas"
                     aria-label="Ver estatísticas"
@@ -179,7 +150,7 @@ export function HabitsWidget() {
               <p className="text-xs text-slate-400 mt-0.5">Últimos 35 dias (Heatmap)</p>
             </div>
             <button 
-              onClick={() => setStatsHabit(null)}
+              onClick={() => setStatsHabitId(null)}
               className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-white transition-colors bg-white/5 hover:bg-white/10 rounded-full cursor-pointer"
               title="Fechar Estatísticas"
               aria-label="Fechar estatísticas"
@@ -224,6 +195,6 @@ export function HabitsWidget() {
           </div>
         </div>
       )}
-    </div>
+    </WidgetShell>
   );
 }

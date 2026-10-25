@@ -1,18 +1,16 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Settings, Maximize2, Expand, Heart } from 'lucide-react';
-import { LinksWidget } from './components/LinksWidget';
-import { FilesWidget } from './components/FilesWidget';
-import { KanbanWidget } from './components/KanbanWidget';
-import { PomodoroWidget } from './components/PomodoroWidget';
-import { ClockWeatherWidget } from './components/ClockWeatherWidget';
-import { HabitsWidget } from './components/HabitsWidget';
+import { useState, useEffect, useRef } from 'react';
+import type { CSSProperties } from 'react';
+import { Settings, Expand, Heart } from 'lucide-react';
 import { SettingsModal } from './components/SettingsModal';
 import { SupportModal } from './components/SupportModal';
 import { SortableWidget } from './components/SortableWidget';
-import { useSettings } from './hooks/useSettings';
 import { PluginFrame } from './components/PluginFrame';
-import { MusicWidget } from './components/MusicWidget';
-import { AIAssistantWidget } from './components/AIAssistantWidget';
+import { Toaster } from './components/ui/Toaster';
+import { useSettings } from './hooks/useSettings';
+import { useCloudSync } from './hooks/useCloudSync';
+import { WIDGET_COMPONENTS } from './widgets/registry';
+import type { BuiltinWidgetId } from './widgets/catalog';
+import type { OrbitPlugin } from '../shared/models';
 import {
   DndContext,
   closestCenter,
@@ -29,10 +27,12 @@ import {
   rectSortingStrategy,
 } from '@dnd-kit/sortable';
 
+// Áreas da barra de título que arrastam a janela (propriedade do Electron, fora dos tipos do React).
+const DRAG_REGION = { WebkitAppRegion: 'drag' } as CSSProperties;
+const NO_DRAG_REGION = { WebkitAppRegion: 'no-drag' } as CSSProperties;
+
 function App() {
-  const [note, setNote] = useState('');
   const [plugins, setPlugins] = useState<OrbitPlugin[]>([]);
-  const noteChangedByUser = useRef(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isSupportOpen, setIsSupportOpen] = useState(false);
   const { settings, reorderWidgets, updateSettings } = useSettings();
@@ -57,7 +57,6 @@ function App() {
 
   useEffect(() => {
     if (!window.electronAPI) return;
-    window.electronAPI.getNote().then(setNote);
     window.electronAPI.getPlugins().then(loadedPlugins => {
       setPlugins(loadedPlugins);
 
@@ -81,12 +80,7 @@ function App() {
     });
   }, []);
 
-  const handleNoteChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const newContent = e.target.value;
-    noteChangedByUser.current = true;
-    setNote(newContent);
-    window.electronAPI?.saveNote(newContent);
-  };
+  useCloudSync();
 
   // Migra a chave do Gemini que ficava em texto puro no localStorage
   // para o armazenamento criptografado do processo main.
@@ -135,18 +129,6 @@ function App() {
     };
   }, []);
 
-  // Envia a nota para a nuvem 2s depois de parar de digitar (só mudanças feitas pelo usuário).
-  useEffect(() => {
-    if (!noteChangedByUser.current) return;
-    const timer = setTimeout(() => {
-      import('./firebase/sync')
-        .then(module => module.syncNoteToCloud(note))
-        .catch(err => console.log('Firebase não configurado ou erro:', err));
-    }, 2000);
-
-    return () => clearTimeout(timer);
-  }, [note]);
-
   const getGridClasses = (id: string) => {
     const size = settings.widgets[id]?.size || 'small';
     if (size === 'medium') return 'md:col-span-2 md:row-span-1';
@@ -163,55 +145,19 @@ function App() {
     }
   };
 
-  const WIDGET_MAP: Record<string, React.ReactNode> = {
-    scratchpad: (
-      <div className="orbit-card p-4 flex flex-col h-full max-h-full">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <h2 className="text-sm font-bold text-slate-100 tracking-wide">Scratchpad</h2>
-            <span className="text-[10px] text-slate-400 font-medium bg-white/[0.04] px-2 py-0.5 rounded-full border border-white/[0.04]">
-              Salvo local
-            </span>
-          </div>
-          <button 
-            type="button"
-            className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-200 hover:bg-white/[0.06] transition-colors"
-            title="Expandir"
-            aria-label="Expandir nota"
-          >
-            <Maximize2 size={14} />
-          </button>
-        </div>
-        <textarea
-          className="flex-1 w-full bg-black/25 rounded-xl p-3 text-slate-200 placeholder-slate-500 resize-none outline-none border border-white/[0.06] focus:border-accent focus:ring-2 focus:ring-accent/30 transition-all custom-scrollbar font-sans text-sm leading-relaxed"
-          placeholder="Digite algo rapidamente..."
-          value={note}
-          onChange={handleNoteChange}
-          spellCheck="false"
-        />
-      </div>
-    ),
-    links: <LinksWidget />,
-    files: <FilesWidget />,
-    kanban: <KanbanWidget />,
-    pomodoro: <PomodoroWidget />,
-    weather: <ClockWeatherWidget />,
-    habits: <HabitsWidget />,
-    ai: <AIAssistantWidget />,
-    music: <MusicWidget />
+  const renderWidget = (id: string) => {
+    const plugin = plugins.find(p => p.id === id);
+    if (plugin) return <PluginFrame plugin={plugin} />;
+    const Component = WIDGET_COMPONENTS[id as BuiltinWidgetId];
+    return Component ? <Component /> : null;
   };
-
-  // Injetar plugins no WIDGET_MAP
-  plugins.forEach(p => {
-    WIDGET_MAP[p.id] = <PluginFrame plugin={p} />;
-  });
 
   return (
     <div className="h-screen flex flex-col font-sans select-none bg-app transition-colors duration-300">
       {/* Title Bar (Draggable com Estética Glass Desktop) */}
       <header 
         className="h-11 flex items-center pl-4 pr-[140px] justify-between border-b border-border bg-widget/40 backdrop-blur-md select-none drag-region" 
-        style={{ WebkitAppRegion: 'drag' } as any}
+        style={DRAG_REGION}
       >
         <div className="flex items-center gap-2.5">
           <div className="w-5 h-5 rounded-full bg-accent/20 border border-accent/40 flex items-center justify-center shadow-sm shadow-accent/20">
@@ -221,7 +167,7 @@ function App() {
           <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-white/[0.05] text-slate-400 border border-white/[0.05] font-mono">v4.0.0</span>
         </div>
 
-        <div className="no-drag-region flex items-center gap-1.5" style={{ WebkitAppRegion: 'no-drag' } as any}>
+        <div className="no-drag-region flex items-center gap-1.5" style={NO_DRAG_REGION}>
           {settings.showSupportButton && (
             <button 
               onClick={() => setIsSupportOpen(true)}
@@ -269,7 +215,7 @@ function App() {
                 if (!settings.widgets[id]?.enabled) return null;
                 return (
                   <SortableWidget key={id} id={id} gridClasses={getGridClasses(id)}>
-                    {WIDGET_MAP[id]}
+                    {renderWidget(id)}
                   </SortableWidget>
                 );
               })}
@@ -287,6 +233,8 @@ function App() {
         isOpen={isSupportOpen} 
         onClose={() => setIsSupportOpen(false)} 
       />
+
+      <Toaster />
     </div>
   );
 }

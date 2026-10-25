@@ -1,8 +1,9 @@
-import { useState } from 'react';
 import { Music, PlayCircle } from 'lucide-react';
+import { useMusic } from '../focus/FocusContext';
 
 export function MusicWidget() {
-  const [provider, setProvider] = useState<'spotify' | 'youtube'>('spotify');
+  // Provedor e pedidos de "tocar agora" vêm do FocusContext (paleta, IA, Modo Zen).
+  const { provider, setProvider, autoplayToken } = useMusic();
 
   return (
     <div className="orbit-card p-4 flex flex-col h-full min-h-[400px]">
@@ -53,9 +54,10 @@ export function MusicWidget() {
           />
         ) : (
           <iframe 
+            key={autoplayToken}
             width="100%" 
             height="100%" 
-            src="https://www.youtube-nocookie.com/embed/jfKfPfyJRdk?autoplay=0" 
+            src={`https://www.youtube-nocookie.com/embed/jfKfPfyJRdk?autoplay=${autoplayToken > 0 ? 1 : 0}`} 
             title="Lofi Girl"
             frameBorder="0" 
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 

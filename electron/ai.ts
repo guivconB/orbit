@@ -2,14 +2,12 @@ import { app, safeStorage } from 'electron';
 import fs from 'fs';
 import path from 'path';
 import { GoogleGenAI } from '@google/genai';
+import type { ChatTurn } from '../shared/models';
+import type { ChatResult } from '../shared/api';
 
 // Alias mantido pelo Google que sempre aponta para o Gemini Flash atual.
 const MODEL = 'gemini-flash-latest';
 
-export interface ChatTurn {
-  role: 'user' | 'model';
-  text: string;
-}
 
 // A chave fica criptografada pelo Windows (DPAPI) e nunca vai para o renderer.
 const keyFile = () => path.join(app.getPath('userData'), 'gemini.key');
@@ -45,7 +43,7 @@ function friendlyError(err: unknown): string {
 export async function chat(
   history: ChatTurn[],
   message: string,
-): Promise<{ ok: true; text: string } | { ok: false; error: string }> {
+): Promise<ChatResult> {
   try {
     const apiKey = getKey();
     if (!apiKey) return { ok: false, error: 'Nenhuma chave de API configurada.' };

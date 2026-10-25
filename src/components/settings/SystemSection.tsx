@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Cpu } from 'lucide-react';
 import clsx from 'clsx';
+import type { OrbitPreferences } from '../../../shared/models';
+import type { PreferencesPatch } from '../../../shared/api';
 
 const SHORTCUT_LABELS: Record<string, string> = {
   'CommandOrControl+Space': 'Ctrl + Espaço',
@@ -19,7 +21,7 @@ export function SystemSection() {
 
   if (!prefs) return null;
 
-  const update = async (patch: Parameters<ElectronAPI['setPreferences']>[0]) => {
+  const update = async (patch: PreferencesPatch) => {
     const res = await window.electronAPI!.setPreferences(patch);
     setPrefs(res.prefs);
     setError(res.ok ? '' : res.error ?? 'Não foi possível salvar.');

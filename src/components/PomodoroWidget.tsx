@@ -1,58 +1,14 @@
-import { useState, useEffect } from 'react';
 import { Play, Pause, RotateCcw, Coffee, Briefcase } from 'lucide-react';
 import clsx from 'clsx';
+import { useFocus } from '../focus/FocusContext';
 
-const DURATION = { work: 25 * 60, break: 5 * 60 } as const;
-type Mode = keyof typeof DURATION;
-
+// O estado do timer fica no FocusContext; este widget só mostra e controla.
 export function PomodoroWidget() {
-  const [mode, setMode] = useState<Mode>('work');
-  const [timeLeft, setTimeLeft] = useState<number>(DURATION.work);
-  // Horário (ms) em que o ciclo termina. null = pausado.
-  const [endsAt, setEndsAt] = useState<number | null>(null);
-  const isActive = endsAt !== null;
-
-  useEffect(() => {
-    if (endsAt === null) return;
-
-    const tick = () => {
-      const left = Math.max(0, Math.round((endsAt - Date.now()) / 1000));
-      setTimeLeft(left);
-      if (left > 0) return;
-
-      setEndsAt(null);
-      const next: Mode = mode === 'work' ? 'break' : 'work';
-      window.electronAPI?.showNotification(
-        mode === 'work' ? 'Pomodoro Finalizado!' : 'Pausa Finalizada!',
-        mode === 'work' ? 'Hora de fazer uma pausa.' : 'Hora de voltar ao foco.',
-      );
-      setMode(next);
-      setTimeLeft(DURATION[next]);
-    };
-
-    tick();
-    const interval = setInterval(tick, 250);
-    return () => clearInterval(interval);
-  }, [endsAt, mode]);
-
-  const toggleTimer = () => {
-    setEndsAt(isActive ? null : Date.now() + timeLeft * 1000);
-  };
-
-  const resetTimer = () => {
-    setEndsAt(null);
-    setTimeLeft(DURATION[mode]);
-  };
-
-  const switchMode = (newMode: Mode) => {
-    setMode(newMode);
-    setEndsAt(null);
-    setTimeLeft(DURATION[newMode]);
-  };
+  const { mode, timeLeft, total, isRunning: isActive, toggle: toggleTimer, reset: resetTimer, switchMode } = useFocus();
 
   const minutes = Math.floor(timeLeft / 60);
   const seconds = timeLeft % 60;
-  const progress = ((DURATION[mode] - timeLeft) / DURATION[mode]) * 100;
+  const progress = total > 0 ? ((total - timeLeft) / total) * 100 : 0;
 
   return (
     <div className="orbit-card p-6 flex flex-col items-center justify-between h-full min-h-[400px] relative overflow-hidden">

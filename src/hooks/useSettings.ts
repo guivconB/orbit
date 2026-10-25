@@ -1,8 +1,11 @@
 import { createContext, createElement, useContext, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
+import { WIDGET_CATALOG } from '../widgets/catalog';
+import type { WidgetSize } from '../widgets/catalog';
 
-export type Theme = 'slate' | 'ocean' | 'emerald' | 'rose';
-export type WidgetSize = 'small' | 'medium' | 'large';
+export type { WidgetSize };
+export const THEMES = ['slate', 'ocean', 'emerald', 'rose'] as const;
+export type Theme = (typeof THEMES)[number];
 
 export interface WidgetSettings {
   id: string;
@@ -24,18 +27,11 @@ export interface AppSettings {
 const defaultSettings: AppSettings = {
   theme: 'slate',
   showSupportButton: false,
-  widgets: {
-    scratchpad: { id: 'scratchpad', enabled: true, size: 'small' },
-    links: { id: 'links', enabled: true, size: 'small' },
-    files: { id: 'files', enabled: true, size: 'small' },
-    kanban: { id: 'kanban', enabled: true, size: 'small' },
-    pomodoro: { id: 'pomodoro', enabled: true, size: 'small' },
-    weather: { id: 'weather', enabled: true, size: 'small' },
-    habits: { id: 'habits', enabled: true, size: 'small' },
-    ai: { id: 'ai', enabled: true, size: 'medium' },
-    music: { id: 'music', enabled: true, size: 'small' }
-  },
-  widgetOrder: ['scratchpad', 'links', 'files', 'kanban', 'pomodoro', 'weather', 'habits', 'ai', 'music']
+  // Widgets nativos vêm do catálogo: um widget novo aparece aqui sozinho.
+  widgets: Object.fromEntries(
+    WIDGET_CATALOG.map(w => [w.id, { id: w.id, enabled: true, size: w.defaultSize }]),
+  ),
+  widgetOrder: WIDGET_CATALOG.map(w => w.id),
 };
 
 // Cor de fundo do app por tema, usada nos botões nativos da janela.

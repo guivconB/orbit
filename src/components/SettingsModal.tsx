@@ -7,6 +7,7 @@ import { OnboardingModal } from './OnboardingModal';
 import { SystemSection } from './settings/SystemSection';
 import { CloudSyncSection } from './settings/CloudSyncSection';
 import clsx from 'clsx';
+import { widgetName } from '../widgets/catalog';
 
 interface Props {
   isOpen: boolean;
@@ -20,17 +21,6 @@ const THEMES: { id: Theme; name: string; colorClass: string }[] = [
   { id: 'rose', name: 'Crepúsculo', colorClass: 'bg-rose-600' },
 ];
 
-const WIDGETS = [
-  { id: 'scratchpad', name: 'Bloco de Notas' },
-  { id: 'links', name: 'Links Rápidos' },
-  { id: 'files', name: 'Atalhos de Arquivos' },
-  { id: 'kanban', name: 'Tarefas / Ideias' },
-  { id: 'pomodoro', name: 'Timer Pomodoro' },
-  { id: 'weather', name: 'Relógio e Clima' },
-  { id: 'habits', name: 'Hábitos' },
-  { id: 'ai', name: 'Assistente IA (Gemini)' },
-  { id: 'music', name: 'Player de Música' },
-];
 
 export function SettingsModal({ isOpen, onClose }: Props) {
   const [isChangelogOpen, setIsChangelogOpen] = useState(false);
@@ -96,11 +86,7 @@ export function SettingsModal({ isOpen, onClose }: Props) {
             
             <div className="space-y-2.5">
               {Object.values(settings.widgets).map(wSettings => {
-                let wName = wSettings.name;
-                if (!wName) {
-                  const builtin = WIDGETS.find(w => w.id === wSettings.id);
-                  wName = builtin ? builtin.name : wSettings.id;
-                }
+                const wName = wSettings.name ?? widgetName(wSettings.id);
                 
                 return (
                   <div key={wSettings.id} className="flex items-center justify-between p-3.5 rounded-2xl bg-black/20 border border-white/[0.06] hover:border-white/10 transition-colors">

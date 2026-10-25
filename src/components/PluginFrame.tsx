@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useSettings } from '../hooks/useSettings';
+import type { OrbitPlugin } from '../../shared/models';
 
 // Plugins rodam num iframe isolado (sem allow-same-origin): não enxergam o app
 // nem o window.electronAPI. Eles conversam com o Orbit só por postMessage,

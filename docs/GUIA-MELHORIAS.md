@@ -108,6 +108,15 @@ db.transaction(() => { migrations.slice(v).forEach(m => m(db)); db.pragma(`user_
 
 ## Fase 1 — Fundação do código (deixa o resto mais rápido)
 
+> ✅ **Implementada em 24/10/2026, junto com os pré-requisitos P1–P4.** Onde ficou cada parte:
+> - **1.1** Tipos compartilhados em `shared/models.ts` e `shared/api.ts` (o preload é checado contra `ElectronAPI`). `main.ts` dividido em `electron/window.ts`, `electron/system.ts` e `electron/ipc/*.ts`. `strict: true` no front e no Electron.
+> - **1.2** `src/hooks/useCollection.ts`: carrega, recarrega com o evento `data-changed` e faz atualização otimista com desfazer em caso de erro.
+> - **1.3** `src/components/ui/WidgetShell.tsx` (`WidgetShell`, `IconButton`, `EmptyState`), usado em Scratchpad, Links, Arquivos, Tarefas e Hábitos. Pomodoro, Clima, IA e Player mantêm o layout próprio.
+> - **1.4** `src/widgets/catalog.ts` (nomes e tamanhos) + `src/widgets/registry.tsx` (componentes). O padrão das configurações e a lista do modal saem do catálogo.
+> - **1.5** `src/components/ScratchpadWidget.tsx`: grava com atraso de 400 ms, salva o pendente ao fechar, e o botão de expandir abre a nota em tela cheia (`Esc` fecha).
+> - **1.6** Toasts (`src/lib/toast.ts` + `Toaster`), Vitest com 25 testes (datas, migrações, ações), `npm run check` e CI em `.github/workflows/ci.yml`.
+> - **P1** `src/focus/FocusContext.tsx` (`useFocus`, `useMusic`). **P2** `src/actions/` (registro, validação, `useActions`, `toToolDeclarations`). **P3** evento `data-changed` + `onDataChanged` no preload + `useCloudSync`. **P4** migração v3 (`priority`, `due_date`, `position`).
+
 ### 1.1 Tipagem e IPC — M
 - Mover a interface `window.electronAPI` de `App.tsx` para `src/types/electron.d.ts` e tirar todos os `any[]`.
 - Criar `src/types/models.ts` com `Task`, `Link`, `FileItem`, `Habit` compartilhados entre `electron/` e `src/`.
@@ -211,6 +220,94 @@ O `OnboardingModal` só abre pelas Configurações. Abrir sozinho na 1ª execuç
 
 ---
 
+## V5 — Caminhos A e B + Banco de Ideias (análise de viabilidade)
+
+Legenda de viabilidade: ✅ viável como descrito · ⚠️ viável com ajuste · ❌ não dá como descrito.
+Esforço: P (< 2h), M (meio dia), G (1+ dia). Itens que já existiam no guia estão indicados.
+
+### Pré-requisitos compartilhados (fazer antes de A e B)
+
+Quase tudo abaixo depende de 4 peças. Construir uma vez serve para todos os itens.
+
+| # | Peça | Por quê | Usado por | Esforço |
+|---|---|---|---|---|
+| P1 | **Estado global do Pomodoro e do player** (`FocusContext`) | Hoje o timer e o player vivem dentro dos widgets (`useState` local). A IA, a paleta e o Modo Zen não conseguem iniciar o timer nem trocar a música | A1, Zen, Ctrl+K, sons ambiente | M |
+| P2 | **Registro único de ações** (`src/actions/registry.ts`) | Uma lista de ações (`addTask`, `startFocus`, `playMusic`, `setTheme`, `toggleHabit`…) com nome, parâmetros e função. A **mesma** lista vira comandos do Ctrl+K e ferramentas da IA. Sem isso, cada recurso reimplementa as ações | A1, Ctrl+K, plugins | M |
+| P3 | **Aviso de "dados mudaram"** (main → tela: `webContents.send('data-changed', 'tasks')`) | Quando a IA ou a paleta cria uma tarefa, o widget de Tarefas precisa recarregar sozinho | A1, A3, Ctrl+K, área de transferência | P |
+| P4 | **Migração v3 do banco**: `tasks.priority`, `tasks.due_date`, `tasks.position` | "Coloca como prioridade" precisa de uma coluna de prioridade (hoje não existe) | A1, 2.4, Ctrl+K | P |
+
+Também ajuda muito fazer antes a **Fase 1** (tipos, `useCollection`, `WidgetShell`, registro de widgets).
+
+---
+
+### 🧠 Caminho A — Orbit Brain (IA que age)
+
+| Item | Viabilidade | Esforço | Observações |
+|---|---|---|---|
+| **A1. Controle do painel por linguagem natural** (= 3.1) | ✅ | M–G | O `@google/genai` já instalado suporta ferramentas (`config.tools[].functionDeclarations`, resposta em `functionCalls`) e o `gemini-flash-latest` as aceita |
+| **A2. Daily Briefing** (= 3.2) | ✅ | P (depois de A1) | 1 chamada por dia, cabe no plano gratuito |
+| **A3. Scratchpad com IA** | ✅ | P–M | Usa saída estruturada (`responseSchema`) para "extrair tarefas" vir como JSON confiável |
+
+**A1 — como implementar**
+1. Em `electron/ai.ts`, declarar as ferramentas a partir do registro de ações (P2): `add_task(title, status, priority?)`, `complete_task(id)`, `list_tasks(filter)`, `start_focus(minutes, music?)`, `play_music(provider: 'lofi' | 'spotify')`, `toggle_habit(name, date?)`, `set_theme(theme)`.
+2. Laço manual de no máximo 5 rodadas: o modelo pede uma ferramenta → o app executa → devolve o resultado → o modelo responde em texto.
+3. Ações de **dados** (tarefas, hábitos) rodam direto no main e disparam P3. Ações de **tela** (Pomodoro, música, tema) vão para a tela via IPC (`ai-action`) e são aplicadas pelo P1.
+4. Ações destrutivas (apagar, concluir várias) pedem confirmação no chat antes de executar.
+5. Mostrar no chat o que foi feito ("✅ Tarefa 'Estudar React' criada com prioridade alta").
+
+**Ajustes necessários no exemplo "focar 40 min com música relaxante":**
+- ⚠️ O Pomodoro hoje tem durações fixas (25/5). Precisa de durações livres (parte do 2.3).
+- ⚠️ **Lo-Fi (YouTube):** dá para iniciar sozinho trocando o `src` do iframe para `autoplay=1` e ligando `autoplayPolicy: 'no-user-gesture-required'` na janela.
+- ❌ **Spotify:** o embed não toca músicas completas por comando sem login do usuário no embed, e o controle por código é limitado. Para "música por comando", usar Lo-Fi ou os sons ambiente nativos (Ideia 3).
+
+**A2 — Daily Briefing**
+- Na primeira abertura do dia (`lastBriefingDate` no `localStorage`), juntar: tarefas abertas, hábitos de ontem não marcados, clima (o widget já busca, passar o resultado adiante) e as primeiras ~500 letras da nota.
+- Pedir 3 linhas: prioridade do dia, hábito em risco e um aviso do clima.
+- Mostrar num card no topo com o botão "dispensar". Deve ser **opcional** nas Configurações, porque envia a nota e as tarefas para o Google.
+
+**A3 — Scratchpad com IA**
+- Botões: **Resumir**, **Extrair tarefas**, **Organizar ideias**.
+- "Extrair tarefas" devolve `[{ title, priority }]` via `responseSchema`. O app mostra a lista com caixas de seleção e só cria as marcadas.
+- "Resumir" e "Organizar" mostram uma prévia com **Aplicar** e **Desfazer**, sem sobrescrever a nota direto.
+- Funciona sobre o texto selecionado ou sobre a nota inteira.
+
+---
+
+### 🧩 Caminho B — Orbit Store (plugins)
+
+**Bloqueio importante:** desde a Fase 0, plugins rodam em iframe isolado (sem acesso ao app, ao `localStorage`, ao sistema nem a sites sem CORS). Isso é o certo para segurança, mas significa que **nenhum dos plugins B1–B3 funciona só com HTML**. Antes é preciso a **API de plugins v2**:
+
+| Peça | O que é | Esforço |
+|---|---|---|
+| `manifest.json` (= 3.10) | `id`, `name`, `version`, `icon`, `permissions: ["system", "network:g1.globo.com", "storage"]` | P |
+| Ponte com pedido e resposta | `orbit.request('system.stats')` → resposta com o mesmo `id`. Uma lib `orbit-plugin.js` pequena que o plugin inclui | M |
+| `storage` por plugin | Arquivo JSON por plugin no main. Substitui o `localStorage` que os plugins perderam na Fase 0 | P |
+| `network` com lista permitida | O main busca a URL (`net.fetch`, sem CORS) **só** para os domínios declarados no manifest | P |
+| Tela de permissões | Ao ativar o plugin: "Este plugin quer: ler uso de CPU/RAM, acessar g1.globo.com" | P |
+
+| Item | Viabilidade | Esforço | Observações |
+|---|---|---|---|
+| **B1. Monitor de hardware** (= 3.6) | ⚠️ | M | **CPU, RAM e disco:** ✅ com `os` / `systeminformation`. **Bateria:** ✅ (`navigator.getBattery()` ou `systeminformation`). **GPU:** ⚠️ no Windows, só a NVIDIA expõe uso de forma confiável (via `nvidia-smi`); AMD/Intel ficam sem dados. Recomendo fazer como **widget nativo** e não como plugin: precisa de acesso ao sistema e é útil para todos |
+| **B2. Leitor de notícias (RSS)** | ✅ (com a API v2) | M | O main busca e lê o feed (`fast-xml-parser`). Fontes: G1, TechCrunch, TabNews e Jovem Nerd publicam RSS; confirmar as URLs na hora de implementar. Cache de 15 min e abrir a notícia no navegador padrão |
+| **B3. Finanças e cripto** | ✅ (com a API v2) | P–M | **Dólar, Euro e Bitcoin:** AwesomeAPI (`economia.awesomeapi.com.br`, grátis, sem chave). **Cripto:** CoinGecko (grátis, com limite). **Ações da B3:** brapi.dev (a maioria dos tickers exige token). ⚠️ "Tempo real" na prática significa atualizar a cada 1–5 min por causa dos limites das APIs gratuitas. Só exibir cotações, sem recomendação |
+| **B4. Orbit Store** | ✅ | G | Catálogo `index.json` num repositório GitHub (`orbit-plugins`) com nome, versão, URL do `.zip` e **SHA-256**. O app baixa, confere o hash, extrai (`fflate`) em `Orbit-Plugins/` e mostra as permissões antes de ativar. Também precisa de atualizar e desinstalar. Só aceitar o catálogo oficial no início |
+
+**Ordem dentro do Caminho B:** API v2 → B1 (como widget nativo) → B3 → B2 → B4 (quando já existirem 3 ou mais plugins para listar).
+
+---
+
+### 💡 Banco de Ideias da V5
+
+| Ideia | Viabilidade | Esforço | Observações |
+|---|---|---|---|
+| **1. Barra de comandos `Ctrl+K`** (= 2.1) | ✅ | M | Usa o registro de ações (P2), então ganha os mesmos comandos da IA. **Calculadora:** usar um parser seguro (`expr-eval`). `eval` é proibido pela CSP, e isso é proposital. "Em qualquer lugar do Windows": o atalho global abre o Orbit já com a barra focada. Uma janela flutuante própria, estilo Raycast, fica para depois (G) |
+| **2. Histórico da área de transferência** (= 3.5) | ⚠️ | P–M | O Electron não avisa quando o clipboard muda, então o main lê `clipboard.readText()` a cada ~1 s. Guardar os últimos 20 **só na memória** por padrão (copiar senhas é comum), com botão de pausar e limpar, e deixar **opcional e desligado** até a pessoa ativar. O Windows já tem `Win+V`: o diferencial do Orbit é a busca e fixar itens |
+| **3. Sons ambiente nativos** | ✅ | P | **Ruído branco, rosa e marrom:** gerar pelo Web Audio API (zero arquivos, funciona offline). **Chuva, cafeteria, fogueira e ondas:** loops `.ogg` de ~1 MB cada com licença **CC0** (ex.: Freesound filtrado por CC0), em `public/sounds/`. Ter volume por som e permitir misturar dois |
+| **4. Espaços de trabalho** (≈ 2.6) | ✅ | G | Migração: tabela `workspaces` + coluna `workspace_id` em `tasks`, `links`, `files` e `notes`; layout dos widgets por espaço nas configurações. Decidir se hábitos são globais (recomendo que sim). O backup na nuvem passa a separar por espaço. Fazer depois da Fase 1 |
+| **5. Modo Zen** | ✅ | P (depois de P1) | Com o Pomodoro rodando: esmaecer os outros widgets (opacidade + `pointer-events: none`) ou abrir uma camada em tela cheia só com o timer, a música e a tarefa atual. Sai com `Esc` ou quando o ciclo termina |
+
+---
+
 ## Fase 4 — Distribuição
 
 - **Atualização automática:** `electron-updater` + GitHub Releases (`publish: { provider: 'github' }`). O `latest.yml` já é gerado.
@@ -223,13 +320,20 @@ O `OnboardingModal` só abre pelas Configurações. Abrir sozinho na 1ª execuç
 
 ## Ordem sugerida
 
-| Semana | Entrega |
-|---|---|
-| 1 | Fase 0 completa → lançar **v4.1** (correções) |
-| 2 | Fase 1 (fundação) |
-| 3 | 2.1 Paleta de comandos + 2.3 Pomodoro + 2.7 Onboarding → **v5.0** |
-| 4 | 2.2 Mini janela + 2.4 Tarefas + 2.6 Layout |
-| 5+ | 3.1 IA com ações, 3.8 Backup, Fase 4 |
+Atualizada em 24/10/2026 com os Caminhos A e B.
+
+| Etapa | Entrega | Versão |
+|---|---|---|
+| ✅ 1 | Fase 0 (correções e segurança) + redesign | v4.1 |
+| ✅ 2 | Fase 1 (fundação) + pré-requisitos P1–P4 | — |
+| 3 | **Ctrl+K** + **A1 IA com ações** (as duas usam o mesmo registro de ações) + Pomodoro com durações livres (2.3) | **v5.0** |
+| 4 | A2 Daily Briefing + A3 Scratchpad com IA + Modo Zen + Sons ambiente | v5.1 |
+| 5 | 2.4 Tarefas (prioridade, prazo, reordenar) + 2.7 Onboarding + 3.8 Backup `.json` | v5.2 |
+| 6 | API de plugins v2 + B1 Monitor (widget nativo) + B3 Finanças + B2 RSS | v5.3 |
+| 7 | B4 Orbit Store + Fase 4 (atualização automática, assinatura) | v6.0 |
+| depois | Espaços de trabalho, área de transferência, mini janela (2.2), layout livre (2.6) | — |
+
+**Por que nesta ordem:** o Caminho A dá o maior salto percebido com pouca infraestrutura, e o Ctrl+K sai quase de graça junto. O Caminho B só faz sentido depois da API de plugins v2. A loja só compensa quando houver plugins para listar. A atualização automática precisa existir antes de distribuir para outras pessoas.
 
 ## Checklist rápido da Fase 0 (concluída)
 - [x] SettingsContext (0.1)

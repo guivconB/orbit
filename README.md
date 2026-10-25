@@ -112,8 +112,24 @@ Scripts e estilos do plugin precisam estar dentro do próprio `index.html` (inli
 ## 🧪 Verificação
 
 ```bash
-npm run typecheck
+npm run check
 ```
+
+Roda lint, verificação de tipos e testes (Vitest). O mesmo roda no GitHub Actions a cada push na `main`.
+
+---
+
+## 🗂️ Estrutura
+
+| Pasta | O que tem |
+| :--- | :--- |
+| `shared/` | Tipos usados pelo Electron e pela tela (`models.ts`, `api.ts`) |
+| `electron/` | Processo principal: janela, banco (`migrations.ts`), IA, preferências |
+| `electron/ipc/` | Um arquivo por área (tarefas, hábitos, links...). Toda alteração avisa a tela com `data-changed` |
+| `src/widgets/` | Catálogo e registro dos widgets: para criar um widget novo, adicione-o nos dois |
+| `src/actions/` | Ações do Orbit (criar tarefa, iniciar foco...). Serão usadas pela paleta `Ctrl+K` e pela IA |
+| `src/focus/` | Estado global do Pomodoro e do player |
+| `src/hooks/` | `useCollection` (listas que se atualizam sozinhas), `useSettings`, `useCloudSync` |
 
 > O `better-sqlite3` 13 já vem com binários prontos (N-API) que funcionam no Electron, por isso o build usa `npmRebuild: false` e não precisa das ferramentas de compilação do Visual Studio.
 

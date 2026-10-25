@@ -28,6 +28,10 @@ export function isoDate(value: unknown, name: string): string {
   return s;
 }
 
+export function optionalIsoDate(value: unknown, name: string): string | null {
+  return value === null || value === undefined || value === '' ? null : isoDate(value, name);
+}
+
 export function isHttpUrl(value: unknown): value is string {
   if (typeof value !== 'string') return false;
   try {

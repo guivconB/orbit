@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Bot, Send, Key } from 'lucide-react';
 import { useSettings } from '../hooks/useSettings';
+import type { ChatTurn } from '../../shared/models';
 
 const GREETING: ChatTurn = { role: 'model', text: 'Olá! Sou seu assistente Gemini. Como posso ajudar com sua produtividade hoje?' };
 
