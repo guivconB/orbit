@@ -8,7 +8,7 @@ Um painel de produtividade pessoal, modular e infinitamente expansível desenvol
 
 - 📦 **Instalador Oficial Windows (.exe)**: Empacotado via NSIS com instalação rápida em um clique e integração automática à bandeja do sistema (System Tray).
 - 🖥️ **Inicialização com o Windows**: Opcional (Configurações > Sistema), abrindo em **Tela Cheia** ou em **Janela** (lembra tamanho e posição).
-- 📜 **Histórico de Versões & Changelog Integrado**: Registro cronológico de todas as funcionalidades entregues da V1 até a V4, embutido diretamente nas configurações.
+- 📜 **Histórico de Versões & Changelog Integrado**: Registro cronológico de todas as funcionalidades entregues da V1 até a versão atual, embutido diretamente nas configurações.
 - 🧩 **Sistema Dinâmico de Plugins**: Carregue novos widgets e utilitários externos (arquivos `.html`) diretamente da pasta `Documentos/Orbit-Plugins` no seu computador. Eles rodam isolados do app (ver [Plugins](#-plugins)).
 - ☁️ **Sincronização em Nuvem (Firebase)**: Login com e-mail e senha, backup automático do Bloco de Notas e das Tarefas e restauração em outro PC.
 - ⚡ **Paleta de Comandos (`Ctrl + K`)**: Crie tarefas digitando, faça contas, inicie o foco ("foco 40"), encontre links, arquivos e hábitos e rode qualquer comando sem tirar as mãos do teclado.
@@ -26,7 +26,7 @@ Um painel de produtividade pessoal, modular e infinitamente expansível desenvol
 
 ## 🛠️ Tecnologias Utilizadas
 
-- **Frontend**: React 19, TypeScript, Tailwind CSS, Lucide-React, `@dnd-kit`
+- **Frontend**: React 19, TypeScript, Tailwind CSS v4, Framer Motion, Lucide-React, `@dnd-kit`
 - **Desktop & Backend**: Electron, Node.js, SQLite (`better-sqlite3`)
 - **Nuvem & IA**: Firebase Auth + Firestore, `@google/genai`
 - **Build & Empacotamento**: Vite, tsup, `electron-builder`
@@ -58,7 +58,7 @@ Para gerar o instalador oficial do Windows:
 ```bash
 npm run dist
 ```
-O instalador `.exe` será gerado automaticamente na pasta `release/` (ex: `release/Orbit Setup 4.0.0.exe`).
+O instalador `.exe` será gerado automaticamente na pasta `release/` (ex: `release/Orbit Setup 5.0.0.exe`).
 
 > **Dica:** Você também pode rodar a versão de produção descompactada sem precisar instalar executando:
 > ```bash
@@ -77,7 +77,7 @@ Ao instalar e abrir a versão empacotada (`.exe`), o **Orbit** se registra autom
 - **Alternar Modo Janela / Tela Cheia**: Caso queira sair da tela cheia a qualquer momento, clique no ícone de **Tela Cheia** no canto superior direito do cabeçalho.
 - **Segundo Plano (Bandeja do Sistema)**: Ao clicar no botão de fechar (`X`) ou pressionar o atalho global, o painel fica recolhido na bandeja do sistema (System Tray) perto do relógio do Windows e pode ser reaberto instantaneamente pelo atalho global ou clicando no ícone da bandeja.
 
-> **Nota para quem atualizou o código:** Se você já havia instalado uma versão anterior no PC que iniciava oculta em segundo plano, basta rodar `npm run dist` novamente e executar o novo instalador em `release/Orbit Setup 4.0.0.exe` para atualizar o executável instalado e a configuração de inicialização do Windows.
+> **Nota para quem atualizou o código:** Se você já havia instalado uma versão anterior no PC que iniciava oculta em segundo plano, basta rodar `npm run dist` novamente e executar o novo instalador gerado em `release/` para atualizar o executável instalado e a configuração de inicialização do Windows.
 
 ---
 
