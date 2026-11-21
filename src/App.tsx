@@ -182,7 +182,7 @@ function App() {
             <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
           </div>
           <span className="text-xs font-bold tracking-wider uppercase text-slate-200">Orbit</span>
-          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-white/[0.05] text-slate-400 border border-white/[0.05] font-mono">v4.0.0</span>
+          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-white/[0.05] text-slate-400 border border-white/[0.05] font-mono">v5.0.0</span>
         </div>
 
         <div className="no-drag-region flex items-center gap-1.5" style={NO_DRAG_REGION}>

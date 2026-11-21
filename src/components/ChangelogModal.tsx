@@ -9,7 +9,7 @@ interface Props {
 }
 
 export function ChangelogModal({ isOpen, onClose }: Props) {
-  const [expandedVersion, setExpandedVersion] = useState<string>('v4.0.0');
+  const [expandedVersion, setExpandedVersion] = useState<string>(CHANGELOG_DATA[0]?.version ?? '');
 
   if (!isOpen) return null;
 

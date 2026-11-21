@@ -1,7 +1,7 @@
 {
   "name": "orbit",
   "private": true,
-  "version": "4.0.0",
+  "version": "5.0.0",
   "description": "Painel de utilidades pessoal e modular para Windows",
   "author": "guivconB",
   "type": "module",

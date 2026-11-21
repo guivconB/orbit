@@ -212,7 +212,7 @@ export function SettingsModal({ isOpen, onClose }: Props) {
                   <div className="flex items-center gap-2">
                     <span className="font-bold text-slate-100 text-xs">Histórico de Versões</span>
                     <span className="text-[10px] uppercase font-mono font-bold tracking-wider px-1.5 py-0.5 rounded-full bg-accent/25 text-accent border border-accent/40">
-                      v4.0.0
+                      v5.0.0
                     </span>
                   </div>
                   <span className="text-[11px] text-slate-400 block mt-0.5">
